@@ -1,0 +1,431 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  TEACHER
+  STUDENT
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum BatchStatus {
+  UPCOMING
+  ONGOING
+  COMPLETED
+  ARCHIVED
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  COMPLETED
+  DROPPED
+}
+
+enum ExamStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum ResultStatus {
+  DRAFT
+  PUBLISHED
+}
+
+enum TargetAudienceType {
+  ALL
+  COURSE
+  BATCH
+  INDIVIDUAL
+}
+
+enum PriorityLevel {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum PaymentStatus {
+  PENDING
+  PARTIAL
+  PAID
+}
+
+model User {
+  id           String     @id @default(uuid())
+  email        String     @unique
+  passwordHash String
+  role         Role
+  status       UserStatus @default(ACTIVE)
+  firstName    String
+  lastName     String
+  phone        String?
+  avatarUrl    String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  studentProfile StudentProfile?
+  teacherProfile TeacherProfile?
+  refreshTokens  RefreshToken[]
+  auditLogs      AuditLog[]
+
+  // Offline Exams created / published
+  createdExams   OfflineExam[] @relation("ExamCreatedBy")
+  publishedExams OfflineExam[] @relation("ExamPublishedBy")
+
+  // Marks entered / updated
+  enteredResults ExamResult[]        @relation("ResultEnteredBy")
+  updatedResults ExamResult[]        @relation("ResultUpdatedBy")
+  resultHistory  ExamResultHistory[] @relation("ResultHistoryChangedBy")
+
+  // Announcements created
+  announcements Announcement[] @relation("AnnouncementAuthor")
+
+  // Registrations reviewed
+  reviewedRequests RegistrationRequest[] @relation("RequestReviewer")
+
+  // Eligible emails added by admin
+  addedEligibleEmails EligibleStudentEmail[] @relation("AdminEligibleEmails")
+
+  @@index([email])
+  @@index([role, status])
+}
+
+model StudentProfile {
+  id               String           @id @default(uuid())
+  userId           String           @unique
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  enrollmentNumber String           @unique
+  rollNumber       String?
+  guardianName     String?
+  guardianPhone    String?
+  address          String?
+  joinedAt         DateTime         @default(now())
+  status           EnrollmentStatus @default(ACTIVE)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  enrollments   Enrollment[]
+  examResults   ExamResult[]
+  feeRecords    FeeRecord[]
+  announcements Announcement[] @relation("IndividualStudentAnnouncements")
+
+  @@index([enrollmentNumber])
+}
+
+model TeacherProfile {
+  id             String   @id @default(uuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  employeeId     String   @unique
+  specialization String?
+  qualifications String?
+  bio            String?
+  joinedAt       DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  assignments TeacherAssignment[]
+
+  @@index([employeeId])
+}
+
+model EligibleStudentEmail {
+  id              String   @id @default(uuid())
+  email           String   @unique
+  fullName        String
+  offlineRegNumber String?  @unique
+  phone           String?
+  courseHint      String?
+  isRegistered    Boolean  @default(false)
+  addedByAdminId  String?
+  addedByAdmin    User?    @relation("AdminEligibleEmails", fields: [addedByAdminId], references: [id], onDelete: SetNull)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([email])
+  @@index([isRegistered])
+}
+
+model RegistrationRequest {
+  id              String        @id @default(uuid())
+  email           String
+  fullName        String
+  phone           String?
+  role            Role          // STUDENT or TEACHER
+  passwordHash    String
+  verificationTokenHash String?
+  tokenExpiresAt  DateTime?
+  isEmailVerified Boolean       @default(false)
+  status          RequestStatus @default(PENDING)
+  reviewNote      String?
+  reviewerId      String?
+  reviewer        User?         @relation("RequestReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+  reviewedAt      DateTime?
+  targetCourseId  String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([email])
+  @@index([status, role])
+}
+
+model Course {
+  id            String   @id @default(uuid())
+  title         String
+  slug          String   @unique
+  description   String
+  curriculum    Json?    // Detailed modules, topics, weeks
+  duration      String   // e.g. "6 Months", "16 Weeks"
+  advertisedFee Float    @default(0.0)
+  thumbnailUrl  String?
+  featured      Boolean  @default(false)
+  published     Boolean  @default(false)
+  displayOrder  Int      @default(0)
+  isArchived    Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  batches       Batch[]
+  enrollments   Enrollment[]
+  offlineExams  OfflineExam[]
+  announcements Announcement[]
+  feeRecords    FeeRecord[]
+
+  @@index([slug])
+  @@index([published, featured])
+}
+
+model Batch {
+  id          String      @id @default(uuid())
+  name        String      // e.g. "Batch 2026-A: Full Stack"
+  batchCode   String      @unique
+  courseId    String
+  course      Course      @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  startDate   DateTime
+  endDate     DateTime?
+  timing      String?     // e.g. "Mon-Fri 10:00 AM - 1:00 PM"
+  capacity    Int         @default(30)
+  status      BatchStatus @default(UPCOMING)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  teachers      TeacherAssignment[]
+  enrollments   Enrollment[]
+  offlineExams  OfflineExam[]
+  announcements Announcement[]
+  feeRecords    FeeRecord[]
+
+  @@index([batchCode])
+  @@index([courseId, status])
+}
+
+model TeacherAssignment {
+  id        String         @id @default(uuid())
+  teacherId String
+  teacher   TeacherProfile @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  batchId   String
+  batch     Batch          @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  roleTitle String?        @default("Primary Instructor") // Lead Instructor, Mentor, Lab Assistant
+  assignedAt DateTime       @default(now())
+
+  @@unique([teacherId, batchId])
+  @@index([teacherId])
+  @@index([batchId])
+}
+
+model Enrollment {
+  id          String           @id @default(uuid())
+  studentId   String
+  student     StudentProfile   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  batchId     String
+  batch       Batch            @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  courseId    String
+  course      Course           @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  enrolledAt  DateTime         @default(now())
+  status      EnrollmentStatus @default(ACTIVE)
+  notes       String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@unique([studentId, batchId])
+  @@index([studentId])
+  @@index([batchId])
+  @@index([courseId])
+}
+
+model OfflineExam {
+  id            String      @id @default(uuid())
+  title         String      // e.g. "DSA Mid-Term Examination"
+  subject       String      // e.g. "Data Structures & Algorithms"
+  courseId      String
+  course        Course      @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  batchId       String
+  batch         Batch       @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  examDate      DateTime
+  maxMarks      Float
+  description   String?
+  status        ExamStatus  @default(DRAFT)
+  createdById   String
+  createdBy     User        @relation("ExamCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  publishedById String?
+  publishedBy   User?       @relation("ExamPublishedBy", fields: [publishedById], references: [id], onDelete: SetNull)
+  publishedAt   DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  results ExamResult[]
+
+  @@index([batchId, examDate])
+  @@index([status])
+}
+
+model ExamResult {
+  id            String       @id @default(uuid())
+  examId        String
+  exam          OfflineExam  @relation(fields: [examId], references: [id], onDelete: Cascade)
+  studentId     String
+  student       StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  marksObtained Float
+  percentage    Float?
+  remarks       String?
+  status        ResultStatus @default(DRAFT)
+  enteredById   String
+  enteredBy     User         @relation("ResultEnteredBy", fields: [enteredById], references: [id], onDelete: Restrict)
+  updatedById   String?
+  updatedBy     User?        @relation("ResultUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  history ExamResultHistory[]
+
+  @@unique([examId, studentId])
+  @@index([studentId])
+  @@index([examId, status])
+}
+
+model ExamResultHistory {
+  id            String     @id @default(uuid())
+  resultId      String
+  result        ExamResult @relation(fields: [resultId], references: [id], onDelete: Cascade)
+  previousMarks Float
+  newMarks      Float
+  reason        String
+  changedById   String
+  changedBy     User       @relation("ResultHistoryChangedBy", fields: [changedById], references: [id], onDelete: Restrict)
+  changedAt     DateTime   @default(now())
+
+  @@index([resultId])
+}
+
+model Announcement {
+  id             String             @id @default(uuid())
+  title          String
+  body           String
+  authorId       String
+  author         User               @relation("AnnouncementAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  targetType     TargetAudienceType @default(ALL)
+  targetCourseId String?
+  targetCourse   Course?            @relation(fields: [targetCourseId], references: [id], onDelete: SetNull)
+  targetBatchId  String?
+  targetBatch    Batch?             @relation(fields: [targetBatchId], references: [id], onDelete: SetNull)
+  targetStudentId String?
+  targetStudent  StudentProfile?    @relation("IndividualStudentAnnouncements", fields: [targetStudentId], references: [id], onDelete: SetNull)
+  priority       PriorityLevel      @default(MEDIUM)
+  publishDate    DateTime           @default(now())
+  expiryDate     DateTime?
+  isPublished    Boolean            @default(true)
+  emailSent      Boolean            @default(false)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  @@index([targetType, isPublished])
+  @@index([publishDate])
+}
+
+model StudentSuccessStory {
+  id             String   @id @default(uuid())
+  studentName    String
+  photoUrl       String?
+  courseCompleted String  // e.g. "Full Stack Cloud & DevOps"
+  jobTitle       String   // e.g. "Software Engineer II"
+  companyName    String   // e.g. "Google / Amazon"
+  companyLogoUrl String?
+  packageLPA     String?  // e.g. "18 LPA"
+  placementYear  Int      // e.g. 2025
+  testimonial    String
+  featured       Boolean  @default(false)
+  published      Boolean  @default(true)
+  displayOrder   Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([published, featured, displayOrder])
+}
+
+model FeeRecord {
+  id            String        @id @default(uuid())
+  studentId     String
+  student       StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  courseId      String
+  course        Course        @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  batchId       String
+  batch         Batch         @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  totalFee      Float
+  paidAmount    Float         @default(0.0)
+  balanceAmount Float         @default(0.0)
+  dueDate       DateTime?
+  paymentStatus PaymentStatus @default(PENDING)
+  notes         String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([studentId])
+  @@index([paymentStatus])
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, revoked])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String   // e.g. "STUDENT_APPROVED", "MARKS_MODIFIED", "EXAM_PUBLISHED"
+  entity    String   // e.g. "RegistrationRequest", "ExamResult", "Course"
+  entityId  String?
+  details   Json?    // Sanitized change metadata, no passwords or tokens
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([entity, entityId])
+  @@index([action, createdAt])
+}

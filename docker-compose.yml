@@ -1,0 +1,146 @@
+version: '3.8'
+
+services:
+  # 1. PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: infotech-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-intern_infotech_db}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal-net
+
+  # 2. Redis Cache & Job Queue
+  redis:
+    image: redis:7-alpine
+    container_name: infotech-redis
+    restart: always
+    command: redis-server --appendonly yes
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal-net
+
+  # 3. Auth Service
+  auth-service:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      args:
+        SERVICE_DIR: backend/services/auth-service
+    container_name: infotech-auth-service
+    restart: always
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-intern_infotech_db}?schema=public
+      REDIS_URL: redis://redis:6379
+      PORT_AUTH_SERVICE: 5001
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - internal-net
+
+  # 4. User Service
+  user-service:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      args:
+        SERVICE_DIR: backend/services/user-service
+    container_name: infotech-user-service
+    restart: always
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-intern_infotech_db}?schema=public
+      REDIS_URL: redis://redis:6379
+      PORT_USER_SERVICE: 5002
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - internal-net
+
+  # 5. Academic Service
+  academic-service:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      args:
+        SERVICE_DIR: backend/services/academic-service
+    container_name: infotech-academic-service
+    restart: always
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-intern_infotech_db}?schema=public
+      REDIS_URL: redis://redis:6379
+      PORT_ACADEMIC_SERVICE: 5003
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - internal-net
+
+  # 6. Notification Service
+  notification-service:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      args:
+        SERVICE_DIR: backend/services/notification-service
+    container_name: infotech-notification-service
+    restart: always
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-intern_infotech_db}?schema=public
+      REDIS_URL: redis://redis:6379
+      PORT_NOTIFICATION_SERVICE: 5004
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - internal-net
+
+  # 7. Nginx Public Gateway & Web App Proxy
+  nginx:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    container_name: infotech-nginx-gateway
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - auth-service
+      - user-service
+      - academic-service
+      - notification-service
+    networks:
+      - internal-net
+
+volumes:
+  pgdata:
+  redisdata:
+
+networks:
+  internal-net:
+    driver: bridge
