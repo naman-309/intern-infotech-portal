@@ -1,0 +1,31 @@
+{
+  "name": "intern-infotech-portal",
+  "version": "1.0.0",
+  "description": "Software Engineering Coaching Institute Portal - Full-Stack Enterprise Platform",
+  "private": true,
+  "workspaces": [
+    "backend/shared",
+    "backend/services/*",
+    "backend/gateway",
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:gateway\" \"npm run dev:auth\" \"npm run dev:user\" \"npm run dev:academic\" \"npm run dev:notification\" \"npm run dev:frontend\"",
+    "dev:backend": "concurrently \"npm run dev:gateway\" \"npm run dev:auth\" \"npm run dev:user\" \"npm run dev:academic\" \"npm run dev:notification\"",
+    "dev:gateway": "npm --prefix backend/gateway run dev",
+    "dev:auth": "npm --prefix backend/services/auth-service run dev",
+    "dev:user": "npm --prefix backend/services/user-service run dev",
+    "dev:academic": "npm --prefix backend/services/academic-service run dev",
+    "dev:notification": "npm --prefix backend/services/notification-service run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "build:frontend": "npm --prefix frontend run build",
+    "db:generate": "npm --prefix backend/shared run prisma:generate",
+    "db:push": "npm --prefix backend/shared run prisma:push",
+    "db:migrate": "npm --prefix backend/shared run prisma:migrate",
+    "db:seed": "npm --prefix backend/shared run prisma:seed",
+    "bootstrap:admin": "node backend/scripts/bootstrap-admin.js"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
