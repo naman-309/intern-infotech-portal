@@ -20,8 +20,8 @@ const upload = multer({
 });
 
 // Self Profile (handles both JSON and multipart/form-data with passport photo)
-router.put('/profile', authenticate, upload.single('avatar'), userController.updateProfile);
-router.post('/change-password', authenticate, userController.changePassword);
+router.put(['/profile', '/users/profile'], authenticate, upload.single('avatar'), userController.updateProfile);
+router.post(['/change-password', '/users/change-password'], authenticate, userController.changePassword);
 
 // Students (cached for 3 minutes)
 router.get(

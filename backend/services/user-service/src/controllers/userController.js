@@ -65,63 +65,69 @@ class UserController {
         userUpdateData.avatarUrl = data.avatarUrl;
       }
 
-      const updatedUser = await prisma.$transaction(async (tx) => {
-        const user = await tx.user.update({
+      // 1. Update User base fields if any
+      if (Object.keys(userUpdateData).length > 0) {
+        await prisma.user.update({
           where: { id: userId },
           data: userUpdateData,
-          include: {
-            studentProfile: {
-              include: {
-                enrollments: { include: { batch: true, course: true } },
-              },
+        });
+      }
+
+      // 2. Update Student Profile if Student
+      if (req.user.role === 'STUDENT') {
+        const studentData = {};
+        if (data.address !== undefined) studentData.address = data.address;
+        if (data.guardianName !== undefined) studentData.guardianName = data.guardianName;
+        if (data.guardianPhone !== undefined) studentData.guardianPhone = data.guardianPhone;
+
+        if (Object.keys(studentData).length > 0) {
+          await prisma.studentProfile.upsert({
+            where: { userId },
+            update: studentData,
+            create: {
+              userId,
+              ...studentData,
+              enrollmentNumber: `IIT-S${Date.now().toString().slice(-6)}`,
+              rollNumber: `R-${Date.now().toString().slice(-4)}`,
             },
-            teacherProfile: {
-              include: {
-                assignments: { include: { batch: true } },
-              },
+          });
+        }
+      }
+
+      // 3. Update Teacher Profile if Teacher
+      if (req.user.role === 'TEACHER') {
+        const teacherData = {};
+        if (data.bio !== undefined) teacherData.bio = data.bio;
+        if (data.specialization !== undefined) teacherData.specialization = data.specialization;
+
+        if (Object.keys(teacherData).length > 0) {
+          await prisma.teacherProfile.upsert({
+            where: { userId },
+            update: teacherData,
+            create: {
+              userId,
+              ...teacherData,
+              employeeId: `IIT-T${Date.now().toString().slice(-4)}`,
+            },
+          });
+        }
+      }
+
+      // 4. Fetch the fresh user object with all updated relations
+      const updatedUser = await prisma.user.findUnique({
+        where: { id: userId },
+        include: {
+          studentProfile: {
+            include: {
+              enrollments: { include: { batch: true, course: true } },
             },
           },
-        });
-
-        if (req.user.role === 'STUDENT') {
-          const studentData = {};
-          if (data.address !== undefined) studentData.address = data.address;
-          if (data.guardianName !== undefined) studentData.guardianName = data.guardianName;
-          if (data.guardianPhone !== undefined) studentData.guardianPhone = data.guardianPhone;
-
-          if (Object.keys(studentData).length > 0) {
-            await tx.studentProfile.upsert({
-              where: { userId },
-              update: studentData,
-              create: {
-                userId,
-                ...studentData,
-                enrollmentNumber: `IIT-S${Date.now().toString().slice(-6)}`,
-                rollNumber: `R-${Date.now().toString().slice(-4)}`,
-              },
-            });
-          }
-        }
-
-        if (req.user.role === 'TEACHER') {
-          const teacherData = {};
-          if (data.bio !== undefined) teacherData.bio = data.bio;
-          if (data.specialization !== undefined) teacherData.specialization = data.specialization;
-
-          if (Object.keys(teacherData).length > 0) {
-            await tx.teacherProfile.upsert({
-              where: { userId },
-              update: teacherData,
-              create: {
-                userId,
-                ...teacherData,
-                employeeId: `IIT-T${Date.now().toString().slice(-4)}`,
-              },
-            });
-          }
-        }
-
-        return user;
+          teacherProfile: {
+            include: {
+              assignments: { include: { batch: true } },
+            },
+          },
+        },
       });
 
       await logAudit({

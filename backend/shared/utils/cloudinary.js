@@ -85,6 +85,21 @@ const uploadBuffer = (buffer, mimetype = 'image/jpeg', folder = 'infotech-portal
       });
     }
 
+    let resolved = false;
+
+    // Safety timeout: if Cloudinary takes more than 4 seconds, fallback immediately
+    const timeoutTimer = setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        console.warn('[Cloudinary] Upload timed out after 4s; falling back to direct Data URI');
+        resolve({
+          secure_url: `data:${mimetype};base64,${buffer.toString('base64')}`,
+          public_id: `timeout-data-uri-${Date.now()}`,
+          isFallback: true,
+        });
+      }
+    }, 4000);
+
     const uploadStream = cloudinary.uploader.upload_stream(
       {
         folder,
@@ -95,6 +110,10 @@ const uploadBuffer = (buffer, mimetype = 'image/jpeg', folder = 'infotech-portal
         ],
       },
       (error, result) => {
+        clearTimeout(timeoutTimer);
+        if (resolved) return;
+        resolved = true;
+
         if (error) {
           console.error('[Cloudinary] Upload stream error:', error?.message || error);
           // Graceful fallback so student profile updates never crash

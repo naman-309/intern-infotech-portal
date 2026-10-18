@@ -50,6 +50,15 @@ export const StudentProfile = () => {
     },
   });
 
+  const {
+    register: regPass,
+    handleSubmit: handlePassSubmit,
+    reset: resetPassForm,
+    formState: { errors: passErrors, isSubmitting: passSubmitting },
+  } = useForm({
+    resolver: zodResolver(passwordSchema),
+  });
+
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
     if (file) {
