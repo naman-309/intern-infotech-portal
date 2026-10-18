@@ -11,11 +11,13 @@ let isRedisAvailable = false;
 try {
   redisClient = new IORedis(config.redisUrl, {
     maxRetriesPerRequest: null,
-    enableReadyCheck: false, // IORedis ke ready check ko rokne ke liye
+    enableReadyCheck: false,
+    family: 0, // <-- IPv4/IPv6 DNS resolution conflict fix karega
+    tls: config.redisUrl.startsWith('rediss://') ? { rejectUnauthorized: false } : undefined, // <-- TLS Buffer drop fix karega
     retryStrategy: (times) => {
       if (times > 3) {
-        console.warn('[Queue] Redis not available on local host. Falling back to direct asynchronous dispatch.');
-        return null; // stop retrying
+        console.warn('[Queue] Redis not available. Falling back to direct asynchronous dispatch.');
+        return null;
       }
       return Math.min(times * 100, 2000);
     },
