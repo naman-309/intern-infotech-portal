@@ -1,57 +1,108 @@
-const { Queue, Worker } = require('bullmq');
 const IORedis = require('ioredis');
 const config = require('../config');
 const emailUtils = require('./email');
 
-let redisClient = null;
-let emailQueue = null;
-let isRedisAvailable = false;
+// ==============================================================================
+// Redis Pub/Sub Architecture — Publisher & Subscriber
+// Cloud-first: Compatible with Upstash Serverless Redis (TLS + family:0)
+// ==============================================================================
 
-// Attempt Redis connection
-try {
-  redisClient = new IORedis(config.redisUrl, {
+const EMAIL_CHANNEL = 'email_channel';
+
+// --- Connection factory ---
+// Each Pub/Sub role (publish vs. subscribe) needs its own dedicated connection.
+// A subscribed client cannot issue regular Redis commands, hence the separation.
+
+const createRedisClient = (label) => {
+  const client = new IORedis(config.redisUrl, {
+    family: 0,               // IPv4/IPv6 dual-stack DNS resolution (Upstash fix)
+    tls: config.redisUrl.startsWith('rediss://')
+      ? { rejectUnauthorized: false } // Allow Upstash self-signed TLS
+      : undefined,
     maxRetriesPerRequest: null,
     enableReadyCheck: false,
-    family: 0, // <-- IPv4/IPv6 DNS resolution conflict fix karega
-    tls: config.redisUrl.startsWith('rediss://') ? { rejectUnauthorized: false } : undefined, // <-- TLS Buffer drop fix karega
     retryStrategy: (times) => {
-      if (times > 3) {
-        console.warn('[Queue] Redis not available. Falling back to direct asynchronous dispatch.');
-        return null;
+      if (times > 5) {
+        console.warn(`[${label}] Redis unavailable after ${times} retries. Giving up.`);
+        return null; // Stop retrying
       }
-      return Math.min(times * 100, 2000);
+      return Math.min(times * 200, 3000); // Exponential back-off, max 3 s
     },
   });
 
-  redisClient.on('connect', () => {
+  client.on('connect', () => console.log(`[${label}] Connected to Redis.`));
+  client.on('error', (err) => {
+    // Only log once, suppress repetitive noise
+    if (err.message && !err.message.includes('ECONNREFUSED logged')) {
+      console.warn(`[${label}] Redis error: ${err.message}`);
+    }
+  });
+
+  return client;
+};
+
+// ---------------------------------------------------------------------------
+// Publisher client — used by all services to publish email jobs
+// ---------------------------------------------------------------------------
+let publisherClient = null;
+let isRedisAvailable = false;
+
+try {
+  publisherClient = createRedisClient('EmailPublisher');
+
+  publisherClient.on('connect', () => {
     isRedisAvailable = true;
-    console.log('[Queue] Redis connected successfully for background jobs.');
   });
 
-  redisClient.on('error', (err) => {
+  publisherClient.on('error', () => {
     isRedisAvailable = false;
-    // Suppress repeated connection error spam in dev
+  });
+} catch (err) {
+  console.warn('[EmailPublisher] Failed to initialise Redis publisher:', err.message);
+}
+
+// ---------------------------------------------------------------------------
+// Subscriber client — lives inside the Notification Service (or any service
+// that initialises the subscriber via initEmailSubscriber()).
+// ---------------------------------------------------------------------------
+
+/**
+ * Start listening to `email_channel` and dispatch emails accordingly.
+ * Call this ONCE at application startup in the service that should process
+ * emails (notification-service, or each service independently).
+ */
+const initEmailSubscriber = () => {
+  let subscriberClient;
+
+  try {
+    subscriberClient = createRedisClient('EmailSubscriber');
+  } catch (err) {
+    console.warn('[EmailSubscriber] Failed to create subscriber client:', err.message);
+    return;
+  }
+
+  subscriberClient.subscribe(EMAIL_CHANNEL, (err, count) => {
+    if (err) {
+      console.error('[EmailSubscriber] Failed to subscribe to channel:', err.message);
+      return;
+    }
+    console.log(`[EmailSubscriber] Subscribed to "${EMAIL_CHANNEL}". Waiting for email jobs…`);
   });
 
-  emailQueue = new Queue('email-queue', {
-    connection: redisClient,
-    skipVersionCheck: true, // <-- BullMQ ke INFO command ko block karne ke liye (Upstash fix)
-    defaultJobOptions: {
-      attempts: 3,
-      backoff: {
-        type: 'exponential',
-        delay: 5000,
-      },
-      removeOnComplete: true,
-      removeOnFail: 100,
-    },
-  });
+  subscriberClient.on('message', async (channel, message) => {
+    if (channel !== EMAIL_CHANNEL) return;
 
-  // Start BullMQ Worker
-  const emailWorker = new Worker(
-    'email-queue',
-    async (job) => {
-      const { type, payload } = job.data;
+    let job;
+    try {
+      job = JSON.parse(message);
+    } catch (parseErr) {
+      console.error('[EmailSubscriber] Failed to parse message:', parseErr.message);
+      return;
+    }
+
+    const { type, payload } = job;
+
+    try {
       switch (type) {
         case 'VERIFICATION':
           await emailUtils.sendVerificationEmail(payload);
@@ -69,36 +120,44 @@ try {
           await emailUtils.sendExamResultsPublishedEmail(payload);
           break;
         default:
-          console.warn(`[EmailWorker] Unknown job type: ${type}`);
+          console.warn(`[EmailSubscriber] Unknown email type received: ${type}`);
       }
-    },
-    {
-      connection: redisClient,
-      skipVersionCheck: true // <-- Worker me bhi version check rokne ke liye
+    } catch (emailErr) {
+      console.error(`[EmailSubscriber] Failed to send "${type}" email:`, emailErr.message);
     }
-  );
-
-  emailWorker.on('failed', (job, err) => {
-    console.error(`[EmailWorker] Job ${job.id} failed after ${job.attemptsMade} attempts:`, err.message);
   });
-} catch (err) {
-  console.warn('[Queue] Initializing queue failed, will use direct async fallback.');
-}
+
+  subscriberClient.on('error', (err) => {
+    console.warn('[EmailSubscriber] Subscriber connection error:', err.message);
+  });
+};
+
+// ---------------------------------------------------------------------------
+// queueEmail — Public API used by all microservices
+//
+// Publishes an email job to email_channel via Redis Pub/Sub.
+// Falls back to a direct async dispatch if Redis is not available.
+// ---------------------------------------------------------------------------
 
 /**
- * Queue or dispatch an email job
+ * Publish an email job to the Redis email_channel.
+ *
+ * @param {string} type    - Email type key: 'VERIFICATION' | 'APPROVAL' | 'REJECTION' | 'PASSWORD_RESET' | 'EXAM_RESULT'
+ * @param {object} payload - Data required by the corresponding email template function.
  */
 const queueEmail = async (type, payload) => {
-  if (isRedisAvailable && emailQueue) {
+  if (isRedisAvailable && publisherClient) {
     try {
-      await emailQueue.add(type, { type, payload });
+      const message = JSON.stringify({ type, payload });
+      await publisherClient.publish(EMAIL_CHANNEL, message);
+      console.log(`[EmailPublisher] Published "${type}" job to "${EMAIL_CHANNEL}".`);
       return;
-    } catch (err) {
-      console.warn('[Queue] Failed to add job to BullMQ, falling back to direct async:', err.message);
+    } catch (pubErr) {
+      console.warn(`[EmailPublisher] Publish failed, falling back to direct dispatch:`, pubErr.message);
     }
   }
 
-  // Graceful direct fallback if Redis is offline
+  // Graceful direct fallback — fires asynchronously so it never blocks the HTTP response
   setImmediate(async () => {
     try {
       switch (type) {
@@ -121,12 +180,13 @@ const queueEmail = async (type, payload) => {
           console.warn(`[DirectEmail] Unknown email type: ${type}`);
       }
     } catch (e) {
-      console.error(`[DirectEmail] Failed to send ${type} email:`, e.message);
+      console.error(`[DirectEmail] Failed to send "${type}" email:`, e.message);
     }
   });
 };
 
 module.exports = {
   queueEmail,
+  initEmailSubscriber,
   isRedisAvailable: () => isRedisAvailable,
 };

@@ -4,8 +4,9 @@ const config = {
   env: process.env.NODE_ENV || 'development',
   isProduction: process.env.NODE_ENV === 'production',
   
-  databaseUrl: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/intern_infotech_db?schema=public',
-  redisUrl: process.env.REDIS_URL || 'redis://localhost:6379',
+  // Cloud-first: Set DATABASE_URL (Neon Serverless PostgreSQL) and REDIS_URL (Upstash Serverless Redis) in your .env
+  databaseUrl: process.env.DATABASE_URL || (() => { throw new Error('DATABASE_URL is required. Set it to your Neon PostgreSQL connection string.'); })(),
+  redisUrl: process.env.REDIS_URL || (() => { throw new Error('REDIS_URL is required. Set it to your Upstash Redis connection string (rediss://...).'); })(),
   
   ports: {
     gateway: parseInt(process.env.PORT_GATEWAY, 10) || 5000,

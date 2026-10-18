@@ -3,8 +3,9 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
-const { config, errorHandler } = require('@portal/shared');
+const { config, errorHandler, initEmailSubscriber } = require('@portal/shared');
 const announcementRoutes = require('./routes/announcementRoutes');
+
 
 const app = express();
 
@@ -35,6 +36,8 @@ const PORT = config.ports.notification;
 if (process.env.NODE_ENV !== 'test') {
   app.listen(PORT, () => {
     console.log(`[NotificationService] Running on port ${PORT} in ${config.env} mode`);
+    // Start Redis Pub/Sub subscriber — processes email jobs from all other microservices
+    initEmailSubscriber();
   });
 }
 
