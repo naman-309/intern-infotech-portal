@@ -4,6 +4,7 @@ import api from '../../lib/api';
 import { Button } from '../../components/ui/Button';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Code2, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import { Logo } from '../../components/shared/Logo';
 
 export const VerifyEmailPage = () => {
   const [searchParams] = useSearchParams();
@@ -41,11 +42,8 @@ export const VerifyEmailPage = () => {
     <div className="min-h-screen bg-slate-950 flex flex-col justify-center items-center px-4 py-12">
       <div className="w-full max-w-md space-y-6">
         <div className="text-center">
-          <Link to="/" className="inline-flex items-center gap-2">
-            <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white">
-              <Code2 className="w-5 h-5" />
-            </div>
-            <span className="text-xl font-bold text-white tracking-tight">INTERN INFOTECH</span>
+          <Link to="/" className="inline-flex flex-col items-center group mb-2 hover:opacity-90 transition-opacity">
+            <Logo textClassName="text-2xl sm:text-3xl" isDark={true} />
           </Link>
         </div>
 

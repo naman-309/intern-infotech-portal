@@ -9,6 +9,7 @@ import { Input } from '../../components/ui/Input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../../components/ui/Card';
 import { Code2, Lock, Mail, ArrowRight, ShieldCheck, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { Logo } from '../../components/shared/Logo';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -56,13 +57,8 @@ export const LoginPage = () => {
 
       <div className="w-full max-w-md space-y-6 relative z-10">
         <div className="text-center space-y-2">
-          <Link to="/" className="inline-flex items-center gap-2 group">
-            <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-600/30 group-hover:scale-105 transition-transform">
-              <Code2 className="w-5 h-5" />
-            </div>
-            <span className="text-xl font-bold text-white tracking-tight">
-              INTERN <span className="text-indigo-400">INFOTECH</span>
-            </span>
+          <Link to="/" className="inline-flex flex-col items-center group mb-2 hover:opacity-90 transition-opacity">
+            <Logo textClassName="text-2xl sm:text-3xl" isDark={true} />
           </Link>
           <h2 className="text-2xl font-bold text-white tracking-tight">Portal Authentication</h2>
           <p className="text-xs text-slate-400">

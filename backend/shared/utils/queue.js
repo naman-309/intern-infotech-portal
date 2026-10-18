@@ -122,11 +122,18 @@ const initEmailSubscriber = () => {
         case 'FEE_PAYMENT':
           await emailUtils.sendFeePaymentEmail(payload);
           break;
+        case 'ANNOUNCEMENT':
+          await emailUtils.sendAnnouncementEmail(payload);
+          break;
         default:
           console.warn(`[EmailSubscriber] Unknown email type received: ${type}`);
       }
     } catch (emailErr) {
-      console.error(`[EmailSubscriber] Failed to send "${type}" email:`, emailErr.message);
+      if (type === 'ANNOUNCEMENT') {
+        console.error(`[EmailSubscriber:ANNOUNCEMENT] SMTP/Nodemailer rejected announcement email for ${payload?.to || payload?.email}:`, emailErr.message, emailErr.stack);
+      } else {
+        console.error(`[EmailSubscriber] Failed to send "${type}" email:`, emailErr.message);
+      }
     }
   });
 
@@ -182,11 +189,18 @@ const queueEmail = async (type, payload) => {
         case 'FEE_PAYMENT':
           await emailUtils.sendFeePaymentEmail(payload);
           break;
+        case 'ANNOUNCEMENT':
+          await emailUtils.sendAnnouncementEmail(payload);
+          break;
         default:
           console.warn(`[DirectEmail] Unknown email type: ${type}`);
       }
     } catch (e) {
-      console.error(`[DirectEmail] Failed to send "${type}" email:`, e.message);
+      if (type === 'ANNOUNCEMENT') {
+        console.error(`[DirectEmail:ANNOUNCEMENT] Direct dispatch failed for ${payload?.to || payload?.email}:`, e.message);
+      } else {
+        console.error(`[DirectEmail] Failed to send "${type}" email:`, e.message);
+      }
     }
   });
 };

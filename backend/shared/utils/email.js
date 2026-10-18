@@ -248,6 +248,75 @@ const sendFeePaymentEmail = async (payload) => {
   return result;
 };
 
+const sendAnnouncementEmail = async (payload) => {
+  const to = payload.to || payload.email;
+  const studentName = payload.studentName || payload.fullName || 'Student';
+  const title = payload.title || 'Important Academic Announcement';
+  const body = payload.body || '';
+  const priority = (payload.priority || 'MEDIUM').toUpperCase();
+  const authorName = payload.authorName || 'Academy Administration';
+  const portalUrl = payload.portalUrl || `${config.clientOrigin}/student/announcements`;
+
+  if (!to) {
+    console.error('[sendAnnouncementEmail] Missing recipient email address. Payload received:', payload);
+    throw new Error('No recipient email address defined for announcement');
+  }
+
+  // Priority color styling
+  let priorityColor = '#38bdf8'; // Sky blue for medium/low
+  if (priority === 'URGENT') {
+    priorityColor = '#f43f5e'; // Rose
+  } else if (priority === 'HIGH') {
+    priorityColor = '#f59e0b'; // Amber
+  }
+
+  const mailer = getTransporter();
+  const html = baseTemplate(
+    title,
+    `
+    <div style="margin-bottom: 16px;">
+      <span style="display: inline-block; padding: 4px 12px; border-radius: 9999px; font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em; background-color: ${priorityColor}20; color: ${priorityColor}; border: 1px solid ${priorityColor}40;">
+        ${priority} PRIORITY ANNOUNCEMENT
+      </span>
+    </div>
+
+    <h2 style="color: #ffffff; font-size: 20px; margin-top: 8px; margin-bottom: 16px;">${title}</h2>
+
+    <p style="color: #94a3b8; font-size: 14px; margin-bottom: 20px;">
+      Published by: <strong style="color: #cbd5e1;">${authorName}</strong>
+    </p>
+
+    <div style="background-color: #0f172a; padding: 20px; border-radius: 8px; border-left: 4px solid ${priorityColor}; margin: 20px 0; color: #f1f5f9; line-height: 1.7; font-size: 14px; white-space: pre-wrap;">${body}</div>
+
+    <p style="color: #cbd5e1; font-size: 14px; margin-top: 24px;">
+      Please log in to your student dashboard to review the complete announcement board, course calendar, and related resources:
+    </p>
+
+    <div style="text-align: center; margin: 28px 0;">
+      <a href="${portalUrl}" class="btn">View in Student Portal</a>
+    </div>
+
+    <p style="font-size: 12px; color: #64748b; margin-top: 20px;">
+      This is an official administrative notice broadcast to enrolled students of Intern Infotech Academy.
+    </p>
+    `
+  );
+
+  try {
+    const result = await mailer.sendMail({
+      from: `"${config.smtp.fromName}" <${config.smtp.fromAddress}>`,
+      to,
+      subject: `[${priority}] ${title} — Intern Infotech Academy`,
+      html,
+    });
+    console.log(`[sendAnnouncementEmail] Announcement email successfully dispatched to ${to} for "${title}"`);
+    return result;
+  } catch (err) {
+    console.error(`[sendAnnouncementEmail] Failed sending announcement email to ${to}:`, err.message);
+    throw err;
+  }
+};
+
 module.exports = {
   getTransporter,
   sendVerificationEmail,
@@ -256,4 +325,5 @@ module.exports = {
   sendPasswordResetEmail,
   sendExamResultsPublishedEmail,
   sendFeePaymentEmail,
+  sendAnnouncementEmail,
 };

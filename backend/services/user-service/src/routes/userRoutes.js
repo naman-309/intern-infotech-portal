@@ -2,10 +2,25 @@ const express = require('express');
 const userController = require('../controllers/userController');
 const { authenticate, requireRole, cacheMiddleware } = require('@portal/shared');
 
+const multer = require('multer');
+
 const router = express.Router();
 
-// Self Profile
-router.put('/profile', authenticate, userController.updateProfile);
+// Memory storage for direct Cloudinary upload (5MB limit)
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files (JPG, PNG, WEBP) are allowed for profile photo upload.'), false);
+    }
+  },
+});
+
+// Self Profile (handles both JSON and multipart/form-data with passport photo)
+router.put('/profile', authenticate, upload.single('avatar'), userController.updateProfile);
 router.post('/change-password', authenticate, userController.changePassword);
 
 // Students (cached for 3 minutes)

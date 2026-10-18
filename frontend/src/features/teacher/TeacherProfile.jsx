@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -8,14 +8,14 @@ import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Ca
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { formatDate } from '../../lib/utils';
-import { Briefcase, Lock, Save } from 'lucide-react';
+import { Briefcase, Lock, Save, Camera, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 
 const teacherProfileSchema = z.object({
   specialization: z.string().optional(),
   bio: z.string().optional(),
   phone: z.string().optional(),
-  avatarUrl: z.string().url().optional().or(z.literal('')),
+  avatarUrl: z.string().optional(),
 });
 
 const passwordSchema = z.object({
@@ -30,6 +30,9 @@ const passwordSchema = z.object({
 export const TeacherProfile = () => {
   const { user, refreshUser } = useAuth();
   const profile = user?.teacherProfile;
+
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(user?.avatarUrl || '');
 
   const {
     register: regProfile,
@@ -54,11 +57,46 @@ export const TeacherProfile = () => {
     resolver: zodResolver(passwordSchema),
   });
 
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        toast.error('Please choose a valid image file (JPG, PNG, or WEBP)');
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Photo size must not exceed 5MB');
+        return;
+      }
+      setSelectedFile(file);
+      setPreviewUrl(URL.createObjectURL(file));
+      toast.info(`Photo selected: ${file.name}. Click "Save Profile" to upload.`);
+    }
+  };
+
   const onUpdateProfile = async (values) => {
     try {
-      await api.put('/users/profile', values);
+      const formData = new FormData();
+      if (values.specialization) formData.append('specialization', values.specialization);
+      if (values.bio) formData.append('bio', values.bio);
+      if (values.phone) formData.append('phone', values.phone);
+
+      if (selectedFile) {
+        formData.append('avatar', selectedFile);
+      } else if (values.avatarUrl) {
+        formData.append('avatarUrl', values.avatarUrl);
+      }
+
+      const res = await api.put('/users/profile', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      if (res?.data?.user?.avatarUrl) {
+        setPreviewUrl(res.data.user.avatarUrl);
+      }
       await refreshUser();
-      toast.success('Instructor profile updated successfully');
+      setSelectedFile(null);
+      toast.success('Instructor photo & profile updated successfully');
     } catch (err) {
       toast.error(err.message || 'Failed to update profile');
     }
@@ -125,9 +163,61 @@ export const TeacherProfile = () => {
               </div>
             </div>
 
-            <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">Avatar Image URL</label>
-              <Input placeholder="https://..." {...regProfile('avatarUrl')} />
+            {/* Passport Photo Upload directly from phone/laptop */}
+            <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 flex flex-col sm:flex-row items-center gap-5">
+              <div className="relative group flex-shrink-0">
+                <img
+                  src={
+                    previewUrl ||
+                    user?.avatarUrl ||
+                    `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.firstName || 'Faculty')}&background=0284c7&color=fff&size=128`
+                  }
+                  alt="Faculty Passport Photo"
+                  className="w-24 h-24 rounded-2xl object-cover border-2 border-sky-500/40 shadow-lg shadow-sky-500/10"
+                />
+                <label
+                  htmlFor="teacher-avatar-input"
+                  className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 rounded-2xl opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity text-white text-[11px] font-medium"
+                >
+                  <Upload className="w-5 h-5 mb-1 text-sky-400" />
+                  Change
+                </label>
+              </div>
+
+              <div className="space-y-1.5 text-center sm:text-left flex-1">
+                <div className="text-sm font-semibold text-white flex items-center justify-center sm:justify-start gap-2">
+                  <Camera className="w-4 h-4 text-sky-400" />
+                  Faculty Photograph
+                </div>
+                <p className="text-xs text-slate-400">
+                  Upload your photo directly from your device (JPG, PNG, WEBP up to 5MB).
+                </p>
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5 pt-1">
+                  <label
+                    htmlFor="teacher-avatar-input"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 text-xs font-medium cursor-pointer border border-sky-500/30 transition-colors"
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    Upload from Device
+                  </label>
+                  {selectedFile ? (
+                    <span className="text-[11px] text-emerald-400 font-mono truncate max-w-[200px]">
+                      ✓ {selectedFile.name}
+                    </span>
+                  ) : (
+                    <span className="text-[11px] text-slate-500">
+                      Saved to Cloudinary
+                    </span>
+                  )}
+                </div>
+                <input
+                  id="teacher-avatar-input"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleFileChange}
+                />
+              </div>
             </div>
 
             <div>
