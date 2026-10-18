@@ -56,9 +56,9 @@ const proxyOptions = {
 
 // 1. Auth Service Routes
 app.use(
-  '/api/v1/auth',
   createProxyMiddleware({
     target: config.serviceUrls.auth,
+    pathFilter: '/api/v1/auth',
     ...proxyOptions,
   })
 );
@@ -75,9 +75,9 @@ const userRoutesPrefixes = [
   '/api/v1/change-password',
 ];
 app.use(
-  userRoutesPrefixes,
   createProxyMiddleware({
     target: config.serviceUrls.user,
+    pathFilter: userRoutesPrefixes,
     ...proxyOptions,
   })
 );
@@ -94,21 +94,22 @@ const academicRoutesPrefixes = [
   '/api/v1/mock-interviews',
 ];
 app.use(
-  academicRoutesPrefixes,
   createProxyMiddleware({
     target: config.serviceUrls.academic,
+    pathFilter: academicRoutesPrefixes,
     ...proxyOptions,
   })
 );
 
 // 4. Notification Service Routes
 app.use(
-  '/api/v1/announcements',
   createProxyMiddleware({
     target: config.serviceUrls.notification,
+    pathFilter: '/api/v1/announcements',
     ...proxyOptions,
   })
 );
+
 
 const PORT = config.ports.gateway;
 if (process.env.NODE_ENV !== 'test') {
