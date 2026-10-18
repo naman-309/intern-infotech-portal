@@ -11,7 +11,7 @@ let isRedisAvailable = false;
 try {
   redisClient = new IORedis(config.redisUrl, {
     maxRetriesPerRequest: null,
-    enableReadyCheck: false,
+    enableReadyCheck: false, // IORedis ke ready check ko rokne ke liye
     retryStrategy: (times) => {
       if (times > 3) {
         console.warn('[Queue] Redis not available on local host. Falling back to direct asynchronous dispatch.');
@@ -33,6 +33,7 @@ try {
 
   emailQueue = new Queue('email-queue', {
     connection: redisClient,
+    skipVersionCheck: true, // <-- BullMQ ke INFO command ko block karne ke liye (Upstash fix)
     defaultJobOptions: {
       attempts: 3,
       backoff: {
@@ -69,7 +70,10 @@ try {
           console.warn(`[EmailWorker] Unknown job type: ${type}`);
       }
     },
-    { connection: redisClient }
+    {
+      connection: redisClient,
+      skipVersionCheck: true // <-- Worker me bhi version check rokne ke liye
+    }
   );
 
   emailWorker.on('failed', (job, err) => {
