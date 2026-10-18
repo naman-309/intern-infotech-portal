@@ -87,12 +87,12 @@ export const Footer = () => {
             </h4>
             <div className="space-y-3 text-xs">
               <div className="flex items-start gap-2.5">
-                <MapPin className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
-                <span>402 Tech Hub, IT Corridor, Electronic City, Bengaluru 560100</span>
+                <MapPin className="w-4 h-4 text-sky-400 shrink-0 mt-0.5" />
+                <span className="leading-relaxed">404, 4th Floor, Vibrant Business Tower, Geeta Bhawan Square, 9A/9B Manoromaganj, A.B. Road, Indore, Madhya Pradesh 452001</span>
               </div>
               <div className="flex items-center gap-2.5">
-                <Phone className="w-4 h-4 text-indigo-400 shrink-0" />
-                <span>+91 98765 43210</span>
+                <Phone className="w-4 h-4 text-sky-400 shrink-0" />
+                <a href="tel:+919826064440" className="hover:text-white transition-colors">+91 98260 64440</a>
               </div>
               <div className="flex items-center gap-2.5">
                 <Mail className="w-4 h-4 text-indigo-400 shrink-0" />

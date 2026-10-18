@@ -179,7 +179,7 @@ export const DashboardLayout = ({ role }) => {
 
           <div className="flex items-center gap-4">
             <span className="text-xs text-slate-400 hidden sm:inline-block font-mono">
-              Offline Center: Electronic City, Bengaluru
+              Offline Center: Geeta Bhawan, Indore
             </span>
             <div className="w-2 h-2 rounded-full bg-emerald-500" title="Connected to Academic Gateway"></div>
           </div>

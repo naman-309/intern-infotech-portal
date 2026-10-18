@@ -109,7 +109,7 @@ export const HomePage = () => {
             </h1>
 
             <p className="text-base sm:text-lg text-slate-400 max-w-2xl mx-auto leading-relaxed">
-              We do not sell pre-recorded tutorials. At our state-of-the-art offline engineering campus in Bengaluru,
+              We do not sell pre-recorded tutorials. At our state-of-the-art offline engineering campus in Indore,
               you build resilient microservices, configure PostgreSQL clusters, and solve whiteboard algorithms guided by veteran tech leads.
             </p>
 
@@ -200,8 +200,8 @@ export const HomePage = () => {
               <div className="pt-2">
                 <a href="#contact">
                   <Button variant="outline" className="gap-2">
-                    <MapPin className="w-4 h-4 text-indigo-400" />
-                    Visit Our Bengaluru Campus
+                    <MapPin className="w-4 h-4 text-sky-400" />
+                    Visit Our Indore Campus
                   </Button>
                 </a>
               </div>
@@ -405,7 +405,7 @@ export const HomePage = () => {
           <div className="mt-8 p-5 rounded-2xl bg-slate-900/40 border border-slate-800/80 flex flex-wrap items-center justify-around gap-4 text-xs font-mono text-slate-300">
             <div className="flex items-center gap-2">
               <MapPin className="w-4 h-4 text-sky-400" />
-              <span>Koramangala 4th Block, Bengaluru</span>
+              <span>Geeta Bhawan Square, Indore</span>
             </div>
             <div className="flex items-center gap-2">
               <Calendar className="w-4 h-4 text-emerald-400" />
@@ -515,18 +515,24 @@ export const HomePage = () => {
 
               <div className="space-y-4">
                 <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 flex items-start gap-3.5">
-                  <MapPin className="w-5 h-5 text-indigo-400 shrink-0 mt-0.5" />
+                  <MapPin className="w-5 h-5 text-sky-400 shrink-0 mt-0.5" />
                   <div>
                     <h4 className="text-xs font-semibold text-slate-200">Main Campus & Lab Facility</h4>
-                    <p className="text-xs text-slate-400 mt-1">{institute.campus?.address || '402 Tech Hub, IT Corridor, Electronic City, Bengaluru 560100'}</p>
+                    <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                      {institute.campus?.address || '404, 4th Floor, Vibrant Business Tower, Geeta Bhawan Square, 9A/9B Manoromaganj, A.B. Road, Indore, Madhya Pradesh 452001'}
+                    </p>
                   </div>
                 </div>
 
                 <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 flex items-start gap-3.5">
-                  <Phone className="w-5 h-5 text-indigo-400 shrink-0 mt-0.5" />
+                  <Phone className="w-5 h-5 text-sky-400 shrink-0 mt-0.5" />
                   <div>
                     <h4 className="text-xs font-semibold text-slate-200">Direct Admissions Desk</h4>
-                    <p className="text-xs text-slate-400 mt-1">{institute.campus?.phone || '+91 98765 43210'}</p>
+                    <p className="text-xs text-slate-400 mt-1">
+                      <a href={`tel:${institute.campus?.phone || '+919826064440'}`} className="hover:text-white transition-colors">
+                        {institute.campus?.phone || '+91 98260 64440'}
+                      </a>
+                    </p>
                   </div>
                 </div>
 
@@ -571,7 +577,7 @@ export const HomePage = () => {
                     <input
                       required
                       type="tel"
-                      placeholder="e.g. +91 98765 43210"
+                      placeholder="e.g. +91 98260 64440"
                       className="w-full h-10 px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-indigo-500"
                     />
                   </div>

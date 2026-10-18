@@ -10,6 +10,8 @@ import {
   LogOut,
   LayoutDashboard,
   GraduationCap,
+  MapPin,
+  Phone,
 } from 'lucide-react';
 
 export const Navbar = () => {
@@ -30,13 +32,30 @@ export const Navbar = () => {
   };
 
   return (
-    <nav className="sticky top-0 z-40 w-full bg-slate-950/90 backdrop-blur-md border-b border-slate-800">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo prominently displayed */}
-          <Link to="/" className="flex items-center gap-2 group py-1">
-            <Logo textClassName="text-xl sm:text-2xl" isDark={true} />
-          </Link>
+    <header className="sticky top-0 z-40 w-full">
+      {/* Top Contact Bar */}
+      <div className="hidden sm:block bg-slate-950/95 border-b border-slate-900 text-[11px] text-slate-400 py-1.5 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-2 truncate">
+            <MapPin className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+            <span className="truncate">404, 4th Floor, Vibrant Business Tower, Geeta Bhawan Square, A.B. Road, Indore, MP 452001</span>
+          </div>
+          <div className="flex items-center gap-4 shrink-0 pl-4 font-mono">
+            <a href="tel:+919826064440" className="flex items-center gap-1.5 text-slate-300 hover:text-sky-400 transition-colors">
+              <Phone className="w-3.5 h-3.5 text-sky-400" />
+              <span>+91 98260 64440</span>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <nav className="w-full bg-slate-950/90 backdrop-blur-md border-b border-slate-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            {/* Logo prominently displayed */}
+            <Link to="/" className="flex items-center gap-2 group py-1">
+              <Logo textClassName="text-xl sm:text-2xl" isDark={true} />
+            </Link>
 
           {/* Desktop Navigation Links */}
           <div className="hidden md:flex items-center gap-7">
@@ -165,8 +184,22 @@ export const Navbar = () => {
               </>
             )}
           </div>
+
+          <div className="pt-3 border-t border-slate-900 space-y-1.5 text-xs text-slate-400">
+            <div className="flex items-start gap-2">
+              <MapPin className="w-3.5 h-3.5 text-sky-400 shrink-0 mt-0.5" />
+              <span>404 Vibrant Business Tower, Geeta Bhawan, Indore</span>
+            </div>
+            <div className="flex items-center gap-2 font-mono">
+              <Phone className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+              <a href="tel:+919826064440" className="text-sky-400 hover:text-white transition-colors">
+                +91 98260 64440
+              </a>
+            </div>
+          </div>
         </div>
       )}
-    </nav>
+      </nav>
+    </header>
   );
 };
