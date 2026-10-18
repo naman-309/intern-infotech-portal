@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../lib/api';
 import { formatCurrency, formatDate } from '../../lib/utils';
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '../../components/ui/Card';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Skeleton } from '../../components/ui/Skeleton';
@@ -150,15 +150,15 @@ export const StudentDashboard = () => {
               enrollments.map((e) => (
                 <div key={e.id} className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
                   <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-bold text-white">{e.course.title}</h4>
+                    <h4 className="text-sm font-bold text-white">{e.course?.title || 'Enrolled Course'}</h4>
                     <Badge variant="success">Active Enrollment</Badge>
                   </div>
                   <div className="text-xs text-indigo-400 font-mono">
-                    Batch: {e.batch.name} ({e.batch.batchCode})
+                    Batch: {e.batch?.name || 'Assigned Batch'} {e.batch?.batchCode ? `(${e.batch.batchCode})` : ''}
                   </div>
                   <div className="text-[11px] text-slate-400 flex items-center gap-2">
                     <Calendar className="w-3.5 h-3.5" />
-                    <span>Timing: {e.batch.timing || 'Mon-Fri Offline Lab'}</span>
+                    <span>Timing: {e.batch?.timing || 'Mon-Fri Offline Lab'}</span>
                   </div>
                 </div>
               ))
@@ -190,12 +190,12 @@ export const StudentDashboard = () => {
               results.slice(0, 3).map((res) => (
                 <div key={res.id} className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between">
                   <div>
-                    <h5 className="text-xs font-semibold text-white">{res.exam.title}</h5>
-                    <p className="text-[11px] text-slate-400">{res.exam.subject} • {formatDate(res.exam.examDate)}</p>
+                    <h5 className="text-xs font-semibold text-white">{res.exam?.title || 'Laboratory Examination'}</h5>
+                    <p className="text-[11px] text-slate-400">{res.exam?.subject || 'Technical'} • {formatDate(res.exam?.examDate)}</p>
                   </div>
                   <div className="text-right">
                     <div className="text-sm font-bold text-indigo-400 font-mono">
-                      {res.marksObtained} / {res.exam.maxMarks}
+                      {res.marksObtained} / {res.exam?.maxMarks || 100}
                     </div>
                     <Badge variant={res.percentage >= 75 ? 'success' : 'warning'} className="text-[10px]">
                       {res.percentage}%
