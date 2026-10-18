@@ -1,13 +1,13 @@
 const express = require('express');
 const batchController = require('../controllers/batchController');
-const { authenticate, requireRole } = require('@portal/shared');
+const { authenticate, requireRole, cacheMiddleware } = require('@portal/shared');
 
 const router = express.Router();
 
 router.use(authenticate);
 
-router.get('/', batchController.getBatches);
-router.get('/:id', batchController.getBatchById);
+router.get('/', cacheMiddleware({ prefix: 'batches', ttl: 180 }), batchController.getBatches);
+router.get('/:id', cacheMiddleware({ prefix: 'batches', ttl: 180 }), batchController.getBatchById);
 
 // Admin-only operations
 router.post('/', requireRole('ADMIN'), batchController.createBatch);

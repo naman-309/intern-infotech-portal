@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { Logo } from './Logo';
 import {
   Code2,
   LayoutDashboard,
@@ -39,7 +40,7 @@ export const DashboardLayout = ({ role }) => {
   const studentNavItems = [
     { label: 'Overview', path: '/student', icon: LayoutDashboard, exact: true },
     { label: 'Courses & Batches', path: '/student/courses', icon: BookOpen },
-    { label: 'Offline Exam Results', path: '/student/results', icon: Award },
+    { label: 'Progress Report', path: '/student/results', icon: Award },
     { label: 'Announcements', path: '/student/announcements', icon: Bell },
     { label: 'Fee Information', path: '/student/fees', icon: CreditCard },
     { label: 'My Profile', path: '/student/profile', icon: User },
@@ -48,7 +49,7 @@ export const DashboardLayout = ({ role }) => {
   const teacherNavItems = [
     { label: 'Overview', path: '/teacher', icon: LayoutDashboard, exact: true },
     { label: 'Assigned Batches', path: '/teacher/batches', icon: Calendar },
-    { label: 'Offline Examinations', path: '/teacher/exams', icon: ClipboardList },
+    { label: 'Mock Interviews', path: '/teacher/exams', icon: ClipboardList },
     { label: 'Announcements', path: '/teacher/announcements', icon: Bell },
     { label: 'Pending Student Requests', path: '/teacher/requests', icon: FileCheck2 },
     { label: 'Teacher Profile', path: '/teacher/profile', icon: User },
@@ -62,7 +63,7 @@ export const DashboardLayout = ({ role }) => {
     { label: 'Teacher Management', path: '/admin/teachers', icon: Users },
     { label: 'Courses & Curriculum', path: '/admin/courses', icon: BookOpen },
     { label: 'Batches & Rosters', path: '/admin/batches', icon: Calendar },
-    { label: 'Offline Exams & Results', path: '/admin/exams', icon: ClipboardList },
+    { label: 'Mock Interviews', path: '/admin/exams', icon: ClipboardList },
     { label: 'Announcements', path: '/admin/announcements', icon: Bell },
     { label: 'Fee Tracking', path: '/admin/fees', icon: CreditCard },
     { label: 'Success Stories CMS', path: '/admin/success-stories', icon: Award },
@@ -85,10 +86,7 @@ export const DashboardLayout = ({ role }) => {
       {/* Mobile Header */}
       <div className="md:hidden flex items-center justify-between px-4 py-3 bg-slate-900 border-b border-slate-800">
         <Link to="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white">
-            <Code2 className="w-4 h-4" />
-          </div>
-          <span className="font-bold text-slate-100 text-sm">INTERN INFOTECH</span>
+          <Logo textClassName="text-base" isDark={true} />
         </Link>
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -105,19 +103,9 @@ export const DashboardLayout = ({ role }) => {
         }`}
       >
         {/* Brand / Logo */}
-        <div className="p-5 border-b border-slate-800/80 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-400 flex items-center justify-center text-white shadow-md shadow-indigo-600/30">
-              <Code2 className="w-5 h-5" />
-            </div>
-            <div>
-              <span className="font-bold text-slate-100 tracking-tight text-sm flex items-center gap-1">
-                INTERN <span className="text-indigo-400">INFOTECH</span>
-              </span>
-              <span className="block text-[10px] text-slate-400 font-mono tracking-wider">
-                ENGINEERING ACADEMY
-              </span>
-            </div>
+        <div className="p-5 border-b border-slate-800/80">
+          <Link to="/" className="block">
+            <Logo textClassName="text-lg" isDark={true} />
           </Link>
         </div>
 
@@ -191,7 +179,7 @@ export const DashboardLayout = ({ role }) => {
 
           <div className="flex items-center gap-4">
             <span className="text-xs text-slate-400 hidden sm:inline-block font-mono">
-              Offline Center: Electronic City, Bengaluru
+              Offline Center: Geeta Bhawan, Indore
             </span>
             <div className="w-2 h-2 rounded-full bg-emerald-500" title="Connected to Academic Gateway"></div>
           </div>

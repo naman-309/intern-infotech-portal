@@ -22,8 +22,8 @@ class PublicCmsController {
         tagline: 'Master Production-Grade Full-Stack & Systems Engineering with Industry Architects',
         description: 'Intern Infotech is an elite offline technical coaching institute dedicated to building the next generation of senior software engineers, distributed systems builders, and cloud architects through rigorous offline laboratory courses.',
         campus: {
-          address: '402 Tech Hub, IT Corridor, Electronic City Phase 1, Bengaluru, Karnataka 560100',
-          phone: '+91 98765 43210',
+          address: '404, 4th Floor, Vibrant Business Tower, Geeta Bhawan Square, 9A/9B Manoromaganj, A.B. Road, Indore, Madhya Pradesh 452001',
+          phone: '+91 98260 64440',
           email: 'admissions@infotech-academy.edu',
           officeHours: 'Monday – Saturday: 9:00 AM – 7:00 PM',
         },

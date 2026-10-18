@@ -105,6 +105,13 @@ model User {
   // Eligible emails added by admin
   addedEligibleEmails EligibleStudentEmail[] @relation("AdminEligibleEmails")
 
+  // Fee payments recorded
+  recordedPayments FeePayment[] @relation("PaymentRecordedBy")
+
+  // Mock Interviews
+  conductedMockInterviews MockInterview[] @relation("MockInterviewConductedBy")
+  enteredMockResults      MockResult[]    @relation("MockResultEnteredBy")
+
   @@index([email])
   @@index([role, status])
 }
@@ -125,6 +132,7 @@ model StudentProfile {
 
   enrollments   Enrollment[]
   examResults   ExamResult[]
+  mockResults   MockResult[]
   feeRecords    FeeRecord[]
   announcements Announcement[] @relation("IndividualStudentAnnouncements")
 
@@ -207,6 +215,7 @@ model Course {
   batches       Batch[]
   enrollments   Enrollment[]
   offlineExams  OfflineExam[]
+  mockInterviews MockInterview[]
   announcements Announcement[]
   feeRecords    FeeRecord[]
 
@@ -231,6 +240,7 @@ model Batch {
   teachers      TeacherAssignment[]
   enrollments   Enrollment[]
   offlineExams  OfflineExam[]
+  mockInterviews MockInterview[]
   announcements Announcement[]
   feeRecords    FeeRecord[]
 
@@ -398,8 +408,69 @@ model FeeRecord {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
+  payments      FeePayment[]
+
   @@index([studentId])
   @@index([paymentStatus])
+}
+
+model FeePayment {
+  id             String      @id @default(uuid())
+  feeRecordId    String
+  feeRecord      FeeRecord   @relation(fields: [feeRecordId], references: [id], onDelete: Cascade)
+  amount         Float
+  paymentMethod  String      @default("UPI") // UPI, Cash, Bank Transfer, Cheque, Card
+  transactionRef String?
+  receiptNumber  String?
+  remarks        String?
+  paidAt         DateTime    @default(now())
+  recordedById   String?
+  recordedBy     User?       @relation("PaymentRecordedBy", fields: [recordedById], references: [id], onDelete: SetNull)
+  createdAt      DateTime    @default(now())
+
+  @@index([feeRecordId])
+  @@index([paidAt])
+}
+
+model MockInterview {
+  id            String        @id @default(uuid())
+  title         String?       // e.g. "Mock Interview - Full-Stack Architecture"
+  date          DateTime
+  courseId      String
+  course        Course        @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  batchId       String?
+  batch         Batch?        @relation(fields: [batchId], references: [id], onDelete: SetNull)
+  totalMarks    Float         @default(35.0) // Every mock interview is out of 35 marks
+  description   String?
+  conductedById String?
+  conductedBy   User?         @relation("MockInterviewConductedBy", fields: [conductedById], references: [id], onDelete: SetNull)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  results       MockResult[]
+
+  @@index([courseId, date])
+  @@index([date])
+}
+
+model MockResult {
+  id              String        @id @default(uuid())
+  mockInterviewId String
+  mockInterview   MockInterview @relation(fields: [mockInterviewId], references: [id], onDelete: Cascade)
+  studentId       String
+  student         StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  marksObtained   Float         // Score out of 35
+  percentage      Float?        // Calculated percentage (marksObtained / 35.0 * 100)
+  feedback        String?
+  status          ResultStatus  @default(PUBLISHED)
+  enteredById     String?
+  enteredBy       User?         @relation("MockResultEnteredBy", fields: [enteredById], references: [id], onDelete: SetNull)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@unique([mockInterviewId, studentId])
+  @@index([studentId])
+  @@index([mockInterviewId, status])
 }
 
 model RefreshToken {

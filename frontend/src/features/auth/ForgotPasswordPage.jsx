@@ -9,6 +9,7 @@ import { Input } from '../../components/ui/Input';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Code2, Mail, CheckCircle2, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
+import { Logo } from '../../components/shared/Logo';
 
 const forgotPasswordSchema = z.object({
   email: z.string().email('Please enter your account email address'),
@@ -40,11 +41,8 @@ export const ForgotPasswordPage = () => {
     <div className="min-h-screen bg-slate-950 flex flex-col justify-center items-center px-4 py-12">
       <div className="w-full max-w-md space-y-6">
         <div className="text-center space-y-2">
-          <Link to="/" className="inline-flex items-center gap-2">
-            <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white">
-              <Code2 className="w-5 h-5" />
-            </div>
-            <span className="text-xl font-bold text-white tracking-tight">INTERN INFOTECH</span>
+          <Link to="/" className="inline-flex flex-col items-center group mb-2 hover:opacity-90 transition-opacity">
+            <Logo textClassName="text-2xl sm:text-3xl" isDark={true} />
           </Link>
           <h2 className="text-2xl font-bold text-white tracking-tight">Recover Password</h2>
           <p className="text-xs text-slate-400">

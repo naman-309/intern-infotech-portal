@@ -34,6 +34,8 @@ export const HomePage = () => {
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [courseSearch, setCourseSearch] = useState('');
   const [inquirySubmitted, setInquirySubmitted] = useState(false);
+  const [showAllCourses, setShowAllCourses] = useState(false);
+  const [showAllStories, setShowAllStories] = useState(false);
 
   // 1. Fetch Overview & Stats
   const { data: overviewData } = useQuery({
@@ -107,7 +109,7 @@ export const HomePage = () => {
             </h1>
 
             <p className="text-base sm:text-lg text-slate-400 max-w-2xl mx-auto leading-relaxed">
-              We do not sell pre-recorded tutorials. At our state-of-the-art offline engineering campus in Bengaluru,
+              We do not sell pre-recorded tutorials. At our state-of-the-art offline engineering campus in Indore,
               you build resilient microservices, configure PostgreSQL clusters, and solve whiteboard algorithms guided by veteran tech leads.
             </p>
 
@@ -198,8 +200,8 @@ export const HomePage = () => {
               <div className="pt-2">
                 <a href="#contact">
                   <Button variant="outline" className="gap-2">
-                    <MapPin className="w-4 h-4 text-indigo-400" />
-                    Visit Our Bengaluru Campus
+                    <MapPin className="w-4 h-4 text-sky-400" />
+                    Visit Our Indore Campus
                   </Button>
                 </a>
               </div>
@@ -275,113 +277,143 @@ export const HomePage = () => {
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {filteredCourses.map((course) => (
-                <Card key={course.id} className="flex flex-col justify-between group hover:border-indigo-500/40 transition-all">
-                  <div>
-                    {/* Thumbnail */}
-                    <div className="relative h-48 w-full overflow-hidden bg-slate-800">
-                      <img
-                        src={course.thumbnailUrl || 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=800&auto=format&fit=crop&q=80'}
-                        alt={course.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                      <div className="absolute top-3 left-3 flex gap-2">
-                        {course.featured && <Badge variant="warning">Featured</Badge>}
-                        <Badge variant="primary">{course.duration}</Badge>
-                      </div>
-                    </div>
-
-                    <CardContent className="p-6 space-y-3">
-                      <h3 className="text-lg font-bold text-white group-hover:text-indigo-400 transition-colors">
-                        {course.title}
-                      </h3>
-                      <p className="text-xs text-slate-400 line-clamp-3 leading-relaxed">
-                        {course.description}
-                      </p>
-
-                      {/* Batches available */}
-                      {course.batches && course.batches.length > 0 && (
-                        <div className="pt-2 border-t border-slate-800/80">
-                          <div className="text-[11px] font-mono text-slate-400 flex items-center gap-1.5">
-                            <Calendar className="w-3.5 h-3.5 text-indigo-400" />
-                            Next Batch: {course.batches[0].name}
-                          </div>
-                          <div className="text-[11px] text-slate-500 mt-0.5">
-                            {course.batches[0].timing || 'Weekday Offline Lab'}
-                          </div>
-                        </div>
-                      )}
-                    </CardContent>
-                  </div>
-
-                  <CardFooter className="px-6 py-4 bg-slate-900/40 border-t border-slate-800/80 flex items-center justify-between">
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {(showAllCourses ? filteredCourses : filteredCourses.slice(0, 6)).map((course) => (
+                  <Card key={course.id} className="flex flex-col justify-between group hover:border-sky-500/40 transition-all">
                     <div>
-                      <div className="text-[10px] text-slate-500 uppercase font-mono">Advertised Fee</div>
-                      <div className="text-base font-bold text-slate-100 font-mono">
-                        {formatCurrency(course.advertisedFee)}
+                      {/* Thumbnail */}
+                      <div className="relative h-48 w-full overflow-hidden bg-slate-800">
+                        <img
+                          src={course.thumbnailUrl || 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=800&auto=format&fit=crop&q=80'}
+                          alt={course.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                        <div className="absolute top-3 left-3 flex gap-2">
+                          {course.featured && <Badge variant="warning">Featured</Badge>}
+                          <Badge variant="primary">{course.duration}</Badge>
+                        </div>
                       </div>
+
+                      <CardContent className="p-6 space-y-3">
+                        <h3 className="text-lg font-bold text-white group-hover:text-sky-400 transition-colors">
+                          {course.title}
+                        </h3>
+                        <p className="text-xs text-slate-400 line-clamp-3 leading-relaxed">
+                          {course.description}
+                        </p>
+
+                        {/* Batches available */}
+                        {course.batches && course.batches.length > 0 && (
+                          <div className="pt-2 border-t border-slate-800/80">
+                            <div className="text-[11px] font-mono text-slate-400 flex items-center gap-1.5">
+                              <Calendar className="w-3.5 h-3.5 text-sky-400" />
+                              Next Batch: {course.batches[0].name}
+                            </div>
+                            <div className="text-[11px] text-slate-500 mt-0.5">
+                              {course.batches[0].timing || 'Weekday Offline Lab'}
+                            </div>
+                          </div>
+                        )}
+                      </CardContent>
                     </div>
 
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setSelectedCourse(course)}
-                      className="border-indigo-500/40 text-indigo-300 hover:bg-indigo-600 hover:text-white"
-                    >
-                      View Curriculum
-                    </Button>
-                  </CardFooter>
-                </Card>
-              ))}
-            </div>
+                    <CardFooter className="px-6 py-4 bg-slate-900/40 border-t border-slate-800/80 flex items-center justify-between">
+                      <div>
+                        <div className="text-[10px] text-slate-500 uppercase font-mono">Advertised Fee</div>
+                        <div className="text-base font-bold text-slate-100 font-mono">
+                          {formatCurrency(course.advertisedFee)}
+                        </div>
+                      </div>
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSelectedCourse(course)}
+                        className="border-sky-500/40 text-sky-300 hover:bg-sky-600 hover:text-white"
+                      >
+                        View Curriculum
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                ))}
+              </div>
+
+              {filteredCourses.length > 6 && (
+                <div className="mt-10 flex justify-center">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowAllCourses(!showAllCourses)}
+                    className="border-sky-500/40 text-sky-400 hover:bg-sky-500/10 px-6 py-2.5 font-medium gap-2"
+                  >
+                    {showAllCourses ? 'Show Fewer Courses' : `View More Courses (${filteredCourses.length - 6} more)`}
+                    <ArrowRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </section>
 
-      {/* 4. CURRICULUM & TECHNOLOGIES SECTION */}
-      <section id="curriculum" className="py-20 border-b border-slate-900 bg-slate-950">
+      {/* 4. OFFLINE CAMPUS SECTION */}
+      <section id="offline-campus" className="py-20 border-b border-slate-900 bg-slate-950">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-2xl mx-auto mb-14 space-y-2">
-            <Badge variant="info">INDUSTRY-STANDARD STACK</Badge>
+            <Badge variant="primary">IN-PERSON FACILITY</Badge>
             <h2 className="text-3xl font-bold text-white tracking-tight">
-              Technologies You Will Build With Every Day
+              The Offline Campus Experience
             </h2>
             <p className="text-slate-400 text-sm">
-              No toy applications. We train you strictly on the stack top engineering teams use in high-throughput production.
+              Purpose-built engineering labs designed for deep, uninterrupted technical learning.
             </p>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-            <div className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800 text-center hover:border-indigo-500/50 transition-colors">
-              <Code2 className="w-8 h-8 text-indigo-400 mx-auto mb-3" />
-              <div className="font-semibold text-sm text-slate-200">React & Vite</div>
-              <div className="text-[11px] text-slate-500 mt-1">Reactive Frontends</div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="p-6 rounded-2xl bg-slate-900/70 border border-slate-800 space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-sky-500/10 text-sky-400 flex items-center justify-center">
+                <Cpu className="w-5 h-5" />
+              </div>
+              <h3 className="text-base font-bold text-white">Dedicated Developer Workstations</h3>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Ergonomic desks equipped with high-speed multi-core developer machines, dual displays, and Linux environments.
+              </p>
             </div>
-            <div className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800 text-center hover:border-indigo-500/50 transition-colors">
-              <Terminal className="w-8 h-8 text-sky-400 mx-auto mb-3" />
-              <div className="font-semibold text-sm text-slate-200">Node & Express</div>
-              <div className="text-[11px] text-slate-500 mt-1">Microservices</div>
+
+            <div className="p-6 rounded-2xl bg-slate-900/70 border border-slate-800 space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+                <Database className="w-5 h-5" />
+              </div>
+              <h3 className="text-base font-bold text-white">Local Server Infrastructure</h3>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                On-premise multi-node PostgreSQL and Redis clusters for realistic high-concurrency and latency testing.
+              </p>
             </div>
-            <div className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800 text-center hover:border-indigo-500/50 transition-colors">
-              <Database className="w-8 h-8 text-emerald-400 mx-auto mb-3" />
-              <div className="font-semibold text-sm text-slate-200">Postgres & Prisma</div>
-              <div className="text-[11px] text-slate-500 mt-1">Relational Internals</div>
+
+            <div className="p-6 rounded-2xl bg-slate-900/70 border border-slate-800 space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center">
+                <Users className="w-5 h-5" />
+              </div>
+              <h3 className="text-base font-bold text-white">Whiteboard & Mentorship Pods</h3>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Collaborative breakout areas for system design defense, algorithm drills, and 1-on-1 mentor guidance.
+              </p>
             </div>
-            <div className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800 text-center hover:border-indigo-500/50 transition-colors">
-              <Cpu className="w-8 h-8 text-rose-400 mx-auto mb-3" />
-              <div className="font-semibold text-sm text-slate-200">Redis & BullMQ</div>
-              <div className="text-[11px] text-slate-500 mt-1">Durable Job Queues</div>
+          </div>
+
+          {/* Quick Snapshot Bar */}
+          <div className="mt-8 p-5 rounded-2xl bg-slate-900/40 border border-slate-800/80 flex flex-wrap items-center justify-around gap-4 text-xs font-mono text-slate-300">
+            <div className="flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-sky-400" />
+              <span>Geeta Bhawan Square, Indore</span>
             </div>
-            <div className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800 text-center hover:border-indigo-500/50 transition-colors">
-              <Cloud className="w-8 h-8 text-amber-400 mx-auto mb-3" />
-              <div className="font-semibold text-sm text-slate-200">Docker & Nginx</div>
-              <div className="text-[11px] text-slate-500 mt-1">Reverse Proxying</div>
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-emerald-400" />
+              <span>Lab Hours: Mon–Sat 8:00 AM – 10:00 PM</span>
             </div>
-            <div className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800 text-center hover:border-indigo-500/50 transition-colors">
-              <Layers className="w-8 h-8 text-purple-400 mx-auto mb-3" />
-              <div className="font-semibold text-sm text-slate-200">System Design</div>
-              <div className="text-[11px] text-slate-500 mt-1">High Availability</div>
+            <div className="flex items-center gap-2">
+              <Award className="w-4 h-4 text-amber-400" />
+              <span>High-Speed 1 Gbps Fiber</span>
             </div>
           </div>
         </div>
@@ -412,40 +444,55 @@ export const HomePage = () => {
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {stories.map((story) => (
-                <div
-                  key={story.id}
-                  className="p-6 rounded-2xl bg-slate-900/70 border border-slate-800 flex flex-col justify-between hover:border-indigo-500/40 transition-all"
-                >
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-3.5">
-                      <img
-                        src={story.photoUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(story.studentName)}`}
-                        alt={story.studentName}
-                        className="w-12 h-12 rounded-xl object-cover border border-slate-700"
-                      />
-                      <div>
-                        <h4 className="text-sm font-bold text-white">{story.studentName}</h4>
-                        <div className="text-xs text-indigo-400 font-medium">{story.jobTitle}</div>
-                        <div className="text-[11px] text-slate-400 flex items-center gap-1 font-mono">
-                          {story.companyName} {story.packageLPA && `• ${story.packageLPA}`}
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {(showAllStories ? stories : stories.slice(0, 6)).map((story) => (
+                  <div
+                    key={story.id}
+                    className="p-6 rounded-2xl bg-slate-900/70 border border-slate-800 flex flex-col justify-between hover:border-sky-500/40 transition-all"
+                  >
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-3.5">
+                        <img
+                          src={story.photoUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(story.studentName)}`}
+                          alt={story.studentName}
+                          className="w-12 h-12 rounded-xl object-cover border border-slate-700"
+                        />
+                        <div>
+                          <h4 className="text-sm font-bold text-white">{story.studentName}</h4>
+                          <div className="text-xs text-sky-400 font-medium">{story.jobTitle}</div>
+                          <div className="text-[11px] text-slate-400 flex items-center gap-1 font-mono">
+                            {story.companyName} {story.packageLPA && `• ${story.packageLPA}`}
+                          </div>
                         </div>
                       </div>
+
+                      <p className="text-xs text-slate-300 italic leading-relaxed">
+                        "{story.testimonial}"
+                      </p>
                     </div>
 
-                    <p className="text-xs text-slate-300 italic leading-relaxed">
-                      "{story.testimonial}"
-                    </p>
+                    <div className="mt-6 pt-4 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-500 font-mono">
+                      <span>Course: {story.courseCompleted}</span>
+                      <span>Class of {story.placementYear}</span>
+                    </div>
                   </div>
+                ))}
+              </div>
 
-                  <div className="mt-6 pt-4 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-500 font-mono">
-                    <span>Course: {story.courseCompleted}</span>
-                    <span>Class of {story.placementYear}</span>
-                  </div>
+              {stories.length > 6 && (
+                <div className="mt-10 flex justify-center">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowAllStories(!showAllStories)}
+                    className="border-sky-500/40 text-sky-400 hover:bg-sky-500/10 px-6 py-2.5 font-medium gap-2"
+                  >
+                    {showAllStories ? 'Show Fewer Placements' : `View More Success Stories (${stories.length - 6} more)`}
+                    <ArrowRight className="w-4 h-4" />
+                  </Button>
                 </div>
-              ))}
-            </div>
+              )}
+            </>
           )}
         </div>
       </section>
@@ -468,18 +515,24 @@ export const HomePage = () => {
 
               <div className="space-y-4">
                 <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 flex items-start gap-3.5">
-                  <MapPin className="w-5 h-5 text-indigo-400 shrink-0 mt-0.5" />
+                  <MapPin className="w-5 h-5 text-sky-400 shrink-0 mt-0.5" />
                   <div>
                     <h4 className="text-xs font-semibold text-slate-200">Main Campus & Lab Facility</h4>
-                    <p className="text-xs text-slate-400 mt-1">{institute.campus?.address || '402 Tech Hub, IT Corridor, Electronic City, Bengaluru 560100'}</p>
+                    <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                      {institute.campus?.address || '404, 4th Floor, Vibrant Business Tower, Geeta Bhawan Square, 9A/9B Manoromaganj, A.B. Road, Indore, Madhya Pradesh 452001'}
+                    </p>
                   </div>
                 </div>
 
                 <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 flex items-start gap-3.5">
-                  <Phone className="w-5 h-5 text-indigo-400 shrink-0 mt-0.5" />
+                  <Phone className="w-5 h-5 text-sky-400 shrink-0 mt-0.5" />
                   <div>
                     <h4 className="text-xs font-semibold text-slate-200">Direct Admissions Desk</h4>
-                    <p className="text-xs text-slate-400 mt-1">{institute.campus?.phone || '+91 98765 43210'}</p>
+                    <p className="text-xs text-slate-400 mt-1">
+                      <a href={`tel:${institute.campus?.phone || '+919826064440'}`} className="hover:text-white transition-colors">
+                        {institute.campus?.phone || '+91 98260 64440'}
+                      </a>
+                    </p>
                   </div>
                 </div>
 
@@ -524,7 +577,7 @@ export const HomePage = () => {
                     <input
                       required
                       type="tel"
-                      placeholder="e.g. +91 98765 43210"
+                      placeholder="e.g. +91 98260 64440"
                       className="w-full h-10 px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-indigo-500"
                     />
                   </div>

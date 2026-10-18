@@ -1,26 +1,40 @@
 const { z } = require('zod');
 const {
   prisma,
+  config,
   successResponse,
   errorResponse,
   paginatedResponse,
   logAudit,
   queueEmail,
+  invalidateCache,
 } = require('@portal/shared');
 
-const createAnnouncementSchema = z.object({
-  title: z.string().min(3, 'Announcement title is required'),
-  body: z.string().min(5, 'Announcement body is required'),
-  targetType: z.enum(['ALL', 'COURSE', 'BATCH', 'INDIVIDUAL']).default('ALL'),
-  targetCourseId: z.string().uuid().optional(),
-  targetBatchId: z.string().uuid().optional(),
-  targetStudentId: z.string().uuid().optional(),
-  priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).default('MEDIUM'),
-  publishDate: z.string().optional().transform((val) => (val ? new Date(val) : new Date())),
-  expiryDate: z.string().optional().transform((val) => (val ? new Date(val) : undefined)),
-  isPublished: z.boolean().default(true),
-  sendEmailNotification: z.boolean().default(false),
-});
+const createAnnouncementSchema = z
+  .object({
+    title: z.string().min(3, 'Announcement title is required'),
+    body: z.string().optional(),
+    content: z.string().optional(),
+    targetType: z.enum(['ALL', 'COURSE', 'BATCH', 'INDIVIDUAL']).optional(),
+    targetScope: z.enum(['ALL', 'COURSE', 'BATCH', 'INDIVIDUAL']).optional(),
+    targetCourseId: z.string().uuid().optional().nullable(),
+    targetBatchId: z.string().uuid().optional().nullable(),
+    targetStudentId: z.string().uuid().optional().nullable(),
+    priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).default('MEDIUM'),
+    publishDate: z.any().optional().transform((val) => (val ? new Date(val) : new Date())),
+    expiryDate: z.any().optional().transform((val) => (val ? new Date(val) : undefined)),
+    isPublished: z.boolean().default(true),
+    sendEmailNotification: z.boolean().default(false),
+  })
+  .refine((data) => Boolean(data.body || data.content), {
+    message: 'Announcement body is required',
+    path: ['body'],
+  })
+  .transform((data) => ({
+    ...data,
+    body: data.body || data.content,
+    targetType: data.targetType || data.targetScope || 'ALL',
+  }));
 
 class AnnouncementController {
   /**
@@ -197,19 +211,39 @@ class AnnouncementController {
               if (profile?.user) recipients = [profile.user];
             }
 
+            let queuedCount = 0;
+            const authorName = `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim() || 'Academy Administration';
+            const portalUrl = `${config.clientOrigin}/student/announcements`;
+
             for (const r of recipients) {
               if (r.email) {
-                // Dispatch async notification email
-                console.log(`[Notification] Dispatched announcement email to ${r.email} for "${data.title}"`);
+                const studentName = `${r.firstName || ''} ${r.lastName || ''}`.trim() || 'Student';
+                try {
+                  await queueEmail('ANNOUNCEMENT', {
+                    to: r.email,
+                    email: r.email,
+                    studentName,
+                    title: data.title,
+                    body: data.body,
+                    priority: data.priority,
+                    authorName,
+                    portalUrl,
+                  });
+                  queuedCount++;
+                } catch (queueErr) {
+                  console.error(`[NotificationService] Failed queuing announcement email to ${r.email}:`, queueErr.message);
+                }
               }
             }
+
+            console.log(`[NotificationService] Dispatched ${queuedCount} announcement emails via Redis Pub/Sub for "${data.title}"`);
 
             await prisma.announcement.update({
               where: { id: announcement.id },
               data: { emailSent: true },
             });
           } catch (e) {
-            console.error('[NotificationService] Email dispatch failed:', e.message);
+            console.error('[NotificationService] Email dispatch process encountered error:', e.message);
           }
         });
       }
@@ -222,6 +256,8 @@ class AnnouncementController {
         details: { title: announcement.title, targetType: announcement.targetType },
         req,
       });
+
+      await invalidateCache(['announcements']);
 
       return successResponse(res, {
         statusCode: 201,
@@ -263,6 +299,8 @@ class AnnouncementController {
         req,
       });
 
+      await invalidateCache(['announcements']);
+
       return successResponse(res, {
         message: 'Announcement updated successfully',
         data: { announcement },
@@ -296,6 +334,8 @@ class AnnouncementController {
         entityId: id,
         req,
       });
+
+      await invalidateCache(['announcements']);
 
       return successResponse(res, { message: 'Announcement deleted' });
     } catch (error) {

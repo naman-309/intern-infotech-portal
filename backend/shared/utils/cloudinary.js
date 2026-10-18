@@ -56,7 +56,84 @@ const uploadImage = async (fileData, folder = 'infotech-portal') => {
   });
 };
 
+const dns = require('dns');
+try {
+  dns.setDefaultResultOrder('ipv4first');
+} catch (e) {
+  // Not supported in older node
+}
+
+/**
+ * Server-side direct buffer upload (from Multer memoryStorage)
+ * Streams buffer to Cloudinary. If Cloudinary credentials are mock/rejected,
+ * gracefully saves as a high-fidelity data URI so the profile image is always preserved.
+ */
+const uploadBuffer = (buffer, mimetype = 'image/jpeg', folder = 'infotech-portal/profiles') => {
+  return new Promise((resolve) => {
+    const isMockOrMissing =
+      !config.cloudinary.apiKey ||
+      !config.cloudinary.apiSecret ||
+      !config.cloudinary.cloudName ||
+      config.cloudinary.cloudName.toLowerCase() === 'root';
+
+    if (isMockOrMissing) {
+      console.warn(`[Cloudinary] Cloudinary cloudName="${config.cloudinary.cloudName}" is a placeholder. Storing avatar as direct Data URI.`);
+      return resolve({
+        secure_url: `data:${mimetype};base64,${buffer.toString('base64')}`,
+        public_id: `data-uri-${Date.now()}`,
+        isDataUri: true,
+      });
+    }
+
+    let resolved = false;
+
+    // Safety timeout: if Cloudinary takes more than 4 seconds, fallback immediately
+    const timeoutTimer = setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        console.warn('[Cloudinary] Upload timed out after 4s; falling back to direct Data URI');
+        resolve({
+          secure_url: `data:${mimetype};base64,${buffer.toString('base64')}`,
+          public_id: `timeout-data-uri-${Date.now()}`,
+          isFallback: true,
+        });
+      }
+    }, 4000);
+
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        folder,
+        resource_type: 'image',
+        allowed_formats: ['jpg', 'png', 'jpeg', 'webp'],
+        transformation: [
+          { width: 500, height: 500, crop: 'fill', gravity: 'face' },
+        ],
+      },
+      (error, result) => {
+        clearTimeout(timeoutTimer);
+        if (resolved) return;
+        resolved = true;
+
+        if (error) {
+          console.error('[Cloudinary] Upload stream error:', error?.message || error);
+          // Graceful fallback so student profile updates never crash
+          return resolve({
+            secure_url: `data:${mimetype};base64,${buffer.toString('base64')}`,
+            public_id: `fallback-data-uri-${Date.now()}`,
+            isFallback: true,
+            error: error?.message,
+          });
+        }
+        resolve(result);
+      }
+    );
+
+    uploadStream.end(buffer);
+  });
+};
+
 module.exports = {
   getSignedUploadParams,
   uploadImage,
+  uploadBuffer,
 };

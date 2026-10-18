@@ -9,6 +9,7 @@ import { Input } from '../../components/ui/Input';
 import { Card, CardContent, CardFooter } from '../../components/ui/Card';
 import { Code2, GraduationCap, CheckCircle2, AlertCircle, ArrowRight, Mail } from 'lucide-react';
 import { toast } from 'sonner';
+import { Logo } from '../../components/shared/Logo';
 
 const studentRegisterSchema = z.object({
   firstName: z.string().min(2, 'First name is required'),
@@ -60,13 +61,8 @@ export const StudentRegisterPage = () => {
     <div className="min-h-screen bg-slate-950 flex flex-col justify-center items-center px-4 py-12 relative overflow-hidden">
       <div className="w-full max-w-lg space-y-6 relative z-10">
         <div className="text-center space-y-2">
-          <Link to="/" className="inline-flex items-center gap-2 group">
-            <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-600/30">
-              <Code2 className="w-5 h-5" />
-            </div>
-            <span className="text-xl font-bold text-white tracking-tight">
-              INTERN <span className="text-indigo-400">INFOTECH</span>
-            </span>
+          <Link to="/" className="inline-flex flex-col items-center group mb-2 hover:opacity-90 transition-opacity">
+            <Logo textClassName="text-2xl sm:text-3xl" isDark={true} />
           </Link>
           <h2 className="text-2xl font-bold text-white tracking-tight">Student Admission Verification</h2>
           <p className="text-xs text-slate-400 max-w-md mx-auto">

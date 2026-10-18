@@ -7,13 +7,15 @@ const {
   errorResponse,
   paginatedResponse,
   logAudit,
+  invalidateCache,
+  uploadBuffer,
 } = require('@portal/shared');
 
 const updateProfileSchema = z.object({
   firstName: z.string().min(2).optional(),
   lastName: z.string().min(1).optional(),
   phone: z.string().optional(),
-  avatarUrl: z.string().url().optional().or(z.literal('')),
+  avatarUrl: z.string().url().optional().or(z.literal('')).or(z.null()),
   // Student-specific permitted fields
   address: z.string().optional(),
   guardianName: z.string().optional(),
@@ -42,42 +44,90 @@ class UserController {
       if (data.firstName !== undefined) userUpdateData.firstName = data.firstName;
       if (data.lastName !== undefined) userUpdateData.lastName = data.lastName;
       if (data.phone !== undefined) userUpdateData.phone = data.phone;
-      if (data.avatarUrl !== undefined) userUpdateData.avatarUrl = data.avatarUrl;
 
-      const updatedUser = await prisma.$transaction(async (tx) => {
-        const user = await tx.user.update({
+      // Direct image upload from Multer buffer to Cloudinary
+      if (req.file) {
+        try {
+          const uploadRes = await uploadBuffer(
+            req.file.buffer,
+            req.file.mimetype,
+            'infotech-portal/profiles'
+          );
+          if (uploadRes?.secure_url) {
+            userUpdateData.avatarUrl = uploadRes.secure_url;
+            console.log(`[UserController] Processed passport photo: ${uploadRes.secure_url.substring(0, 45)}...`);
+          }
+        } catch (uploadErr) {
+          console.error('[UserController] Avatar processing error:', uploadErr.message);
+          userUpdateData.avatarUrl = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+        }
+      } else if (data.avatarUrl !== undefined && data.avatarUrl !== null) {
+        userUpdateData.avatarUrl = data.avatarUrl;
+      }
+
+      // 1. Update User base fields if any
+      if (Object.keys(userUpdateData).length > 0) {
+        await prisma.user.update({
           where: { id: userId },
           data: userUpdateData,
         });
+      }
 
-        if (req.user.role === 'STUDENT' && req.user.studentProfile) {
-          const studentData = {};
-          if (data.address !== undefined) studentData.address = data.address;
-          if (data.guardianName !== undefined) studentData.guardianName = data.guardianName;
-          if (data.guardianPhone !== undefined) studentData.guardianPhone = data.guardianPhone;
+      // 2. Update Student Profile if Student
+      if (req.user.role === 'STUDENT') {
+        const studentData = {};
+        if (data.address !== undefined) studentData.address = data.address;
+        if (data.guardianName !== undefined) studentData.guardianName = data.guardianName;
+        if (data.guardianPhone !== undefined) studentData.guardianPhone = data.guardianPhone;
 
-          if (Object.keys(studentData).length > 0) {
-            await tx.studentProfile.update({
-              where: { id: req.user.studentProfile.id },
-              data: studentData,
-            });
-          }
+        if (Object.keys(studentData).length > 0) {
+          await prisma.studentProfile.upsert({
+            where: { userId },
+            update: studentData,
+            create: {
+              userId,
+              ...studentData,
+              enrollmentNumber: `IIT-S${Date.now().toString().slice(-6)}`,
+              rollNumber: `R-${Date.now().toString().slice(-4)}`,
+            },
+          });
         }
+      }
 
-        if (req.user.role === 'TEACHER' && req.user.teacherProfile) {
-          const teacherData = {};
-          if (data.bio !== undefined) teacherData.bio = data.bio;
-          if (data.specialization !== undefined) teacherData.specialization = data.specialization;
+      // 3. Update Teacher Profile if Teacher
+      if (req.user.role === 'TEACHER') {
+        const teacherData = {};
+        if (data.bio !== undefined) teacherData.bio = data.bio;
+        if (data.specialization !== undefined) teacherData.specialization = data.specialization;
 
-          if (Object.keys(teacherData).length > 0) {
-            await tx.teacherProfile.update({
-              where: { id: req.user.teacherProfile.id },
-              data: teacherData,
-            });
-          }
+        if (Object.keys(teacherData).length > 0) {
+          await prisma.teacherProfile.upsert({
+            where: { userId },
+            update: teacherData,
+            create: {
+              userId,
+              ...teacherData,
+              employeeId: `IIT-T${Date.now().toString().slice(-4)}`,
+            },
+          });
         }
+      }
 
-        return user;
+      // 4. Fetch the fresh user object with all updated relations
+      const updatedUser = await prisma.user.findUnique({
+        where: { id: userId },
+        include: {
+          studentProfile: {
+            include: {
+              enrollments: { include: { batch: true, course: true } },
+            },
+          },
+          teacherProfile: {
+            include: {
+              assignments: { include: { batch: true } },
+            },
+          },
+        },
       });
 
       await logAudit({
@@ -88,6 +138,8 @@ class UserController {
         details: { fields: Object.keys(data) },
         req,
       });
+
+      await invalidateCache(['users']);
 
       return successResponse(res, {
         message: 'Profile updated successfully',
@@ -374,6 +426,8 @@ class UserController {
         details: { previousStatus: user.status, newStatus: status, userEmail: user.email },
         req,
       });
+
+      await invalidateCache(['users', 'auth']);
 
       return successResponse(res, {
         message: `User status changed to ${status}`,

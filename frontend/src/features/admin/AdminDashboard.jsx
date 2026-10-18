@@ -1,6 +1,7 @@
 import React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
+import { toast } from 'sonner';
 import api from '../../lib/api';
 import { formatDate } from '../../lib/utils';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
@@ -17,9 +18,27 @@ import {
   ShieldAlert,
   ArrowRight,
   TrendingUp,
+  Zap,
+  RefreshCw,
+  Database,
 } from 'lucide-react';
 
 export const AdminDashboard = () => {
+  const queryClient = useQueryClient();
+  const [isPurging, setIsPurging] = React.useState(false);
+
+  const handlePurgeCache = async () => {
+    try {
+      setIsPurging(true);
+      const res = await api.post('/courses/cache/purge');
+      queryClient.invalidateQueries();
+      toast.success(res?.message || 'Upstash Redis cache successfully wiped! Fresh data reloaded.');
+    } catch (err) {
+      toast.error(err.message || 'Failed to purge Redis cache');
+    } finally {
+      setIsPurging(false);
+    }
+  };
   // 1. Fetch Students
   const { data: studentsData, isLoading: studentsLoading } = useQuery({
     queryKey: ['adminStudentsCount'],
@@ -88,7 +107,25 @@ export const AdminDashboard = () => {
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-2.5">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 text-xs font-mono border border-emerald-500/20">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <Zap className="w-3.5 h-3.5" />
+              Upstash Redis Cache (250MB Safe)
+            </div>
+
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handlePurgeCache}
+              disabled={isPurging}
+              className="gap-2 border-slate-700 bg-slate-900/60 hover:border-amber-500/50 hover:bg-amber-500/10 text-slate-300 hover:text-amber-300 transition-colors"
+              title="Wipe cached query data across Redis (Free tier 250MB storage & 500k commands safe)"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isPurging ? 'animate-spin text-amber-400' : 'text-slate-400'}`} />
+              {isPurging ? 'Purging Cache...' : 'Flush Redis Cache'}
+            </Button>
+
             <Link to="/admin/registrations">
               <Button size="sm" variant="primary" className="gap-2">
                 <FileCheck2 className="w-4 h-4" />

@@ -1,19 +1,52 @@
 const express = require('express');
 const userController = require('../controllers/userController');
-const { authenticate, requireRole } = require('@portal/shared');
+const { authenticate, requireRole, cacheMiddleware } = require('@portal/shared');
+
+const multer = require('multer');
 
 const router = express.Router();
 
-// Self Profile
-router.put('/profile', authenticate, userController.updateProfile);
-router.post('/change-password', authenticate, userController.changePassword);
+// Memory storage for direct Cloudinary upload (5MB limit)
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files (JPG, PNG, WEBP) are allowed for profile photo upload.'), false);
+    }
+  },
+});
 
-// Students
-router.get('/students', authenticate, requireRole('ADMIN', 'TEACHER'), userController.getStudents);
-router.get('/students/:id', authenticate, requireRole('ADMIN', 'TEACHER'), userController.getStudentById);
+// Self Profile (handles both JSON and multipart/form-data with passport photo)
+router.put(['/profile', '/users/profile'], authenticate, upload.single('avatar'), userController.updateProfile);
+router.post(['/change-password', '/users/change-password'], authenticate, userController.changePassword);
 
-// Teachers
-router.get('/teachers', authenticate, requireRole('ADMIN'), userController.getTeachers);
+// Students (cached for 3 minutes)
+router.get(
+  '/students',
+  authenticate,
+  requireRole('ADMIN', 'TEACHER'),
+  cacheMiddleware({ prefix: 'users', ttl: 180 }),
+  userController.getStudents
+);
+router.get(
+  '/students/:id',
+  authenticate,
+  requireRole('ADMIN', 'TEACHER'),
+  cacheMiddleware({ prefix: 'users', ttl: 180 }),
+  userController.getStudentById
+);
+
+// Teachers (cached for 3 minutes)
+router.get(
+  '/teachers',
+  authenticate,
+  requireRole('ADMIN'),
+  cacheMiddleware({ prefix: 'users', ttl: 180 }),
+  userController.getTeachers
+);
 
 // User status lifecycle (Active / Inactive / Suspended)
 router.patch('/users/:id/status', authenticate, requireRole('ADMIN'), userController.updateUserStatus);

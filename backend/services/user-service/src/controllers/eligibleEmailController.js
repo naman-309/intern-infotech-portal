@@ -5,6 +5,7 @@ const {
   errorResponse,
   paginatedResponse,
   logAudit,
+  invalidateCache,
 } = require('@portal/shared');
 
 const createEligibleSchema = z.object({
@@ -104,6 +105,8 @@ class EligibleEmailController {
         req,
       });
 
+      await invalidateCache(['eligible_emails']);
+
       return successResponse(res, {
         statusCode: 201,
         message: 'Eligible student email record created successfully.',
@@ -155,6 +158,8 @@ class EligibleEmailController {
         req,
       });
 
+      await invalidateCache(['eligible_emails']);
+
       return successResponse(res, {
         message: `Bulk import completed: ${createdCount} added, ${skippedCount} skipped (already existed).`,
         data: { createdCount, skippedCount },
@@ -185,6 +190,8 @@ class EligibleEmailController {
         details: { email: record.email },
         req,
       });
+
+      await invalidateCache(['eligible_emails']);
 
       return successResponse(res, { message: 'Eligible student record removed.' });
     } catch (error) {

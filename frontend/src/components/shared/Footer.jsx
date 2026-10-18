@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Code2, MapPin, Phone, Mail, Shield, BookOpen, ExternalLink } from 'lucide-react';
+import { Logo } from './Logo';
+import { MapPin, Phone, Mail, Shield, BookOpen, ExternalLink } from 'lucide-react';
 
 export const Footer = () => {
   return (
@@ -9,14 +10,9 @@ export const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Col 1: Institute Brand */}
           <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white">
-                <Code2 className="w-5 h-5" />
-              </div>
-              <span className="text-base font-bold text-slate-100 tracking-tight">
-                INTERN <span className="text-indigo-400">INFOTECH</span>
-              </span>
-            </div>
+            <Link to="/" className="inline-block">
+              <Logo textClassName="text-lg" isDark={true} />
+            </Link>
             <p className="text-xs text-slate-400 leading-relaxed">
               An elite offline software engineering institute training top engineers, system architects, and distributed cloud builders through rigorous laboratory projects.
             </p>
@@ -91,12 +87,12 @@ export const Footer = () => {
             </h4>
             <div className="space-y-3 text-xs">
               <div className="flex items-start gap-2.5">
-                <MapPin className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
-                <span>402 Tech Hub, IT Corridor, Electronic City, Bengaluru 560100</span>
+                <MapPin className="w-4 h-4 text-sky-400 shrink-0 mt-0.5" />
+                <span className="leading-relaxed">404, 4th Floor, Vibrant Business Tower, Geeta Bhawan Square, 9A/9B Manoromaganj, A.B. Road, Indore, Madhya Pradesh 452001</span>
               </div>
               <div className="flex items-center gap-2.5">
-                <Phone className="w-4 h-4 text-indigo-400 shrink-0" />
-                <span>+91 98765 43210</span>
+                <Phone className="w-4 h-4 text-sky-400 shrink-0" />
+                <a href="tel:+919826064440" className="hover:text-white transition-colors">+91 98260 64440</a>
               </div>
               <div className="flex items-center gap-2.5">
                 <Mail className="w-4 h-4 text-indigo-400 shrink-0" />

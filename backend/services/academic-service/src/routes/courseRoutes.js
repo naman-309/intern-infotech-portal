@@ -1,15 +1,34 @@
 const express = require('express');
 const courseController = require('../controllers/courseController');
-const { authenticate, requireRole, optionalAuth } = require('@portal/shared');
+const {
+  authenticate,
+  requireRole,
+  cacheMiddleware,
+  purgeAllCache,
+  successResponse,
+} = require('@portal/shared');
 
 const router = express.Router();
 
-// Public course endpoints
-router.get('/public', courseController.getPublicCourses);
-router.get('/public/:slug', courseController.getPublicCourseBySlug);
+// Admin Manual Cache Flush & Wipe
+router.post('/cache/purge', authenticate, requireRole('ADMIN'), async (req, res, next) => {
+  try {
+    const result = await purgeAllCache();
+    return successResponse(res, {
+      message: 'Upstash Redis cache successfully wiped and refreshed!',
+      data: result,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
 
-// Admin course management
-router.get('/', authenticate, requireRole('ADMIN', 'TEACHER'), courseController.getAllCourses);
+// Public course endpoints (Cached in Redis for 180s)
+router.get('/public', cacheMiddleware({ prefix: 'courses', ttl: 180 }), courseController.getPublicCourses);
+router.get('/public/:slug', cacheMiddleware({ prefix: 'courses', ttl: 180 }), courseController.getPublicCourseBySlug);
+
+// Admin course management (Cached in Redis for 180s)
+router.get('/', authenticate, requireRole('ADMIN', 'TEACHER'), cacheMiddleware({ prefix: 'courses', ttl: 180 }), courseController.getAllCourses);
 router.post('/', authenticate, requireRole('ADMIN'), courseController.createCourse);
 router.put('/:id', authenticate, requireRole('ADMIN'), courseController.updateCourse);
 router.delete('/:id/archive', authenticate, requireRole('ADMIN'), courseController.archiveCourse);

@@ -12,6 +12,7 @@ const resultRoutes = require('./routes/resultRoutes');
 const successStoryRoutes = require('./routes/successStoryRoutes');
 const feeRoutes = require('./routes/feeRoutes');
 const publicRoutes = require('./routes/publicRoutes');
+const mockInterviewRoutes = require('./routes/mockInterviewRoutes');
 
 const app = express();
 
@@ -42,6 +43,7 @@ app.use('/api/v1/results', resultRoutes);
 app.use('/api/v1/success-stories', successStoryRoutes);
 app.use('/api/v1/fees', feeRoutes);
 app.use('/api/v1/public', publicRoutes);
+app.use('/api/v1/mock-interviews', mockInterviewRoutes);
 
 app.use(errorHandler);
 

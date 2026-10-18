@@ -1,42 +1,7 @@
-version: '3.8'
+# version: '3.8'
 
 services:
-  # 1. PostgreSQL Database
-  postgres:
-    image: postgres:16-alpine
-    container_name: infotech-postgres
-    restart: always
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: ${POSTGRES_DB:-intern_infotech_db}
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    networks:
-      - internal-net
-
-  # 2. Redis Cache & Job Queue
-  redis:
-    image: redis:7-alpine
-    container_name: infotech-redis
-    restart: always
-    command: redis-server --appendonly yes
-    volumes:
-      - redisdata:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    networks:
-      - internal-net
-
-  # 3. Auth Service
+  # 1. Auth Service
   auth-service:
     build:
       context: .
@@ -47,18 +12,13 @@ services:
     restart: always
     env_file: .env
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-intern_infotech_db}?schema=public
-      REDIS_URL: redis://redis:6379
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
       PORT_AUTH_SERVICE: 5001
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
     networks:
       - internal-net
 
-  # 4. User Service
+  # 2. User Service
   user-service:
     build:
       context: .
@@ -69,16 +29,13 @@ services:
     restart: always
     env_file: .env
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-intern_infotech_db}?schema=public
-      REDIS_URL: redis://redis:6379
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
       PORT_USER_SERVICE: 5002
-    depends_on:
-      postgres:
-        condition: service_healthy
     networks:
       - internal-net
 
-  # 5. Academic Service
+  # 3. Academic Service
   academic-service:
     build:
       context: .
@@ -89,16 +46,13 @@ services:
     restart: always
     env_file: .env
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-intern_infotech_db}?schema=public
-      REDIS_URL: redis://redis:6379
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
       PORT_ACADEMIC_SERVICE: 5003
-    depends_on:
-      postgres:
-        condition: service_healthy
     networks:
       - internal-net
 
-  # 6. Notification Service
+  # 4. Notification Service
   notification-service:
     build:
       context: .
@@ -109,18 +63,13 @@ services:
     restart: always
     env_file: .env
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-intern_infotech_db}?schema=public
-      REDIS_URL: redis://redis:6379
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
       PORT_NOTIFICATION_SERVICE: 5004
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
     networks:
       - internal-net
 
-  # 7. Nginx Public Gateway & Web App Proxy
+  # 5. Nginx Public Gateway & Web App Proxy
   nginx:
     build:
       context: .
@@ -136,10 +85,6 @@ services:
       - notification-service
     networks:
       - internal-net
-
-volumes:
-  pgdata:
-  redisdata:
 
 networks:
   internal-net:
