@@ -154,7 +154,7 @@ export const StudentDashboard = () => {
               enrollments.map((e) => (
                 <div key={e.id} className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
                   <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-bold text-white">{e.course.title}</h4>
+                    <h4 className="text-sm font-bold text-white">{e.course?.title || 'Enrolled Course'}</h4>
                     <Badge variant="success">Active Enrollment</Badge>
                   </div>
                   <div className="text-xs text-brand-400 font-mono">
@@ -162,7 +162,7 @@ export const StudentDashboard = () => {
                   </div>
                   <div className="text-[11px] text-slate-400 flex items-center gap-2">
                     <Calendar className="w-3.5 h-3.5" />
-                    <span>Timing: {e.batch.timing || 'Mon-Fri Offline Lab'}</span>
+                    <span>Timing: {e.batch?.timing || 'Mon-Fri Offline Lab'}</span>
                   </div>
                 </div>
               ))
