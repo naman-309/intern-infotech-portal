@@ -347,6 +347,22 @@ class BatchController {
         },
       });
 
+      // Automatically set joiningDate and journeyStatus on student profile if first course enrollment
+      const totalEnrollments = await prisma.enrollment.count({
+        where: { studentId },
+      });
+      if (totalEnrollments === 1) {
+        await prisma.studentProfile.update({
+          where: { id: studentId },
+          data: {
+            joiningDate: new Date(),
+            journeyStatus: 'ACTIVE',
+          },
+        }).catch((err) => {
+          console.error('[BatchController] Error setting first enrollment joiningDate:', err.message);
+        });
+      }
+
       // Create fee record if not already present
       const existingFee = await prisma.feeRecord.findFirst({
         where: { studentId, batchId },

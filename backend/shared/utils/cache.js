@@ -158,7 +158,7 @@ const cacheMiddleware = ({ prefix = 'api', ttl = 180, keyGenerator } = {}) => {
 
     const cacheKey = keyGenerator
       ? keyGenerator(req)
-      : `cache:${prefix}:${req.baseUrl || ''}${req.path}:${new URLSearchParams(req.query || {}).toString()}:${req.user?.role || 'public'}`;
+      : `cache:${prefix}:${req.baseUrl || ''}${req.path}:${new URLSearchParams(req.query || {}).toString()}:${req.user?.role || 'public'}${req.user?.id ? `:${req.user.id}` : ''}`;
 
     try {
       const cached = await getCache(cacheKey);

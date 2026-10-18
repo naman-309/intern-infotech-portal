@@ -69,6 +69,12 @@ enum PaymentStatus {
   PAID
 }
 
+enum JourneyStatus {
+  ACTIVE
+  PLACED
+  DROPPED_OUT
+}
+
 model User {
   id           String     @id @default(uuid())
   email        String     @unique
@@ -113,7 +119,10 @@ model User {
   enteredMockResults      MockResult[]    @relation("MockResultEnteredBy")
 
   @@index([email])
+  @@index([firstName])
+  @@index([lastName])
   @@index([role, status])
+  @@index([phone])
 }
 
 model StudentProfile {
@@ -126,6 +135,10 @@ model StudentProfile {
   guardianPhone    String?
   address          String?
   joinedAt         DateTime         @default(now())
+  joiningDate      DateTime         @default(now())
+  journeyStatus    JourneyStatus    @default(ACTIVE)
+  exitDate         DateTime?
+  dropOutReason    String?
   status           EnrollmentStatus @default(ACTIVE)
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
@@ -137,6 +150,9 @@ model StudentProfile {
   announcements Announcement[] @relation("IndividualStudentAnnouncements")
 
   @@index([enrollmentNumber])
+  @@index([journeyStatus])
+  @@index([joiningDate])
+  @@index([rollNumber])
 }
 
 model TeacherProfile {

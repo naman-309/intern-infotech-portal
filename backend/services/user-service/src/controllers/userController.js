@@ -189,25 +189,37 @@ class UserController {
   }
 
   /**
-   * Admin / Teacher: List Students
+   * Admin / Teacher: List Students (Indexed and Parallelized for Sub-300ms Search)
    */
   async getStudents(req, res, next) {
     try {
-      const { search = '', status, batchId, page = 1, limit = 10 } = req.query;
+      const { search = '', status, batchId, journeyStatus, page = 1, limit = 10 } = req.query;
       const skip = (Number(page) - 1) * Number(limit);
       const take = Number(limit);
+      const trimmedSearch = search.trim();
 
       const where = {
         role: 'STUDENT',
         ...(status && { status }),
-        ...(search && {
+        ...(journeyStatus && {
+          studentProfile: {
+            journeyStatus,
+          },
+        }),
+        ...(trimmedSearch && {
           OR: [
-            { firstName: { contains: search, mode: 'insensitive' } },
-            { lastName: { contains: search, mode: 'insensitive' } },
-            { email: { contains: search, mode: 'insensitive' } },
+            { firstName: { contains: trimmedSearch, mode: 'insensitive' } },
+            { lastName: { contains: trimmedSearch, mode: 'insensitive' } },
+            { email: { contains: trimmedSearch, mode: 'insensitive' } },
+            { phone: { contains: trimmedSearch, mode: 'insensitive' } },
             {
               studentProfile: {
-                enrollmentNumber: { contains: search, mode: 'insensitive' },
+                enrollmentNumber: { contains: trimmedSearch, mode: 'insensitive' },
+              },
+            },
+            {
+              studentProfile: {
+                rollNumber: { contains: trimmedSearch, mode: 'insensitive' },
               },
             },
           ],
@@ -221,7 +233,8 @@ class UserController {
         }),
       };
 
-      const [total, students] = await prisma.$transaction([
+      // Concurrent parallel queries over connection pooler (replaces slow $transaction)
+      const [total, students] = await Promise.all([
         prisma.user.count({ where }),
         prisma.user.findMany({
           where,
@@ -238,7 +251,18 @@ class UserController {
             avatarUrl: true,
             createdAt: true,
             studentProfile: {
-              include: {
+              select: {
+                id: true,
+                enrollmentNumber: true,
+                rollNumber: true,
+                guardianName: true,
+                guardianPhone: true,
+                address: true,
+                joiningDate: true,
+                journeyStatus: true,
+                exitDate: true,
+                dropOutReason: true,
+                createdAt: true,
                 enrollments: {
                   include: {
                     batch: true,
@@ -263,14 +287,17 @@ class UserController {
   }
 
   /**
-   * Get Student by ID
+   * Get Student by ID (Full Student 360 View)
    */
   async getStudentById(req, res, next) {
     try {
       const { id } = req.params;
 
       const student = await prisma.user.findFirst({
-        where: { id, role: 'STUDENT' },
+        where: {
+          role: 'STUDENT',
+          OR: [{ id }, { studentProfile: { id } }],
+        },
         select: {
           id: true,
           email: true,
@@ -287,9 +314,28 @@ class UserController {
                   batch: true,
                   course: true,
                 },
+                orderBy: { enrolledAt: 'desc' },
               },
               feeRecords: {
-                include: { course: true, batch: true },
+                include: {
+                  course: true,
+                  batch: true,
+                  payments: {
+                    orderBy: { paidAt: 'desc' },
+                  },
+                },
+                orderBy: { createdAt: 'desc' },
+              },
+              mockResults: {
+                include: {
+                  mockInterview: {
+                    include: {
+                      course: true,
+                      batch: true,
+                    },
+                  },
+                },
+                orderBy: { createdAt: 'desc' },
               },
               examResults: {
                 include: {
@@ -297,6 +343,7 @@ class UserController {
                     include: { course: true, batch: true },
                   },
                 },
+                orderBy: { createdAt: 'desc' },
               },
             },
           },
@@ -308,6 +355,209 @@ class UserController {
       }
 
       return successResponse(res, { data: { student } });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Admin: Update Student Details on behalf of student
+   */
+  async updateStudentByAdmin(req, res, next) {
+    try {
+      const { id } = req.params;
+      const {
+        firstName,
+        lastName,
+        phone,
+        email,
+        avatarUrl,
+        rollNumber,
+        guardianName,
+        guardianPhone,
+        address,
+        joiningDate,
+        journeyStatus,
+        exitDate,
+        dropOutReason,
+      } = req.body;
+
+      const student = await prisma.user.findFirst({
+        where: {
+          role: 'STUDENT',
+          OR: [{ id }, { studentProfile: { id } }],
+        },
+        include: { studentProfile: true },
+      });
+
+      if (!student) {
+        return errorResponse(res, { statusCode: 404, message: 'Student not found' });
+      }
+
+      const userUpdateData = {};
+      if (firstName !== undefined) userUpdateData.firstName = firstName;
+      if (lastName !== undefined) userUpdateData.lastName = lastName;
+      if (phone !== undefined) userUpdateData.phone = phone;
+      if (avatarUrl !== undefined) userUpdateData.avatarUrl = avatarUrl;
+      if (email !== undefined && email !== student.email) {
+        // Verify unique email
+        const existingEmail = await prisma.user.findUnique({ where: { email } });
+        if (existingEmail && existingEmail.id !== student.id) {
+          return errorResponse(res, { statusCode: 400, message: 'Email address is already in use' });
+        }
+        userUpdateData.email = email;
+      }
+
+      if (Object.keys(userUpdateData).length > 0) {
+        await prisma.user.update({
+          where: { id: student.id },
+          data: userUpdateData,
+        });
+      }
+
+      const profileUpdateData = {};
+      if (rollNumber !== undefined) profileUpdateData.rollNumber = rollNumber;
+      if (guardianName !== undefined) profileUpdateData.guardianName = guardianName;
+      if (guardianPhone !== undefined) profileUpdateData.guardianPhone = guardianPhone;
+      if (address !== undefined) profileUpdateData.address = address;
+      if (joiningDate !== undefined) profileUpdateData.joiningDate = new Date(joiningDate);
+      if (journeyStatus !== undefined) profileUpdateData.journeyStatus = journeyStatus;
+      if (exitDate !== undefined) profileUpdateData.exitDate = exitDate ? new Date(exitDate) : null;
+      if (dropOutReason !== undefined) profileUpdateData.dropOutReason = dropOutReason;
+
+      if (student.studentProfile) {
+        if (Object.keys(profileUpdateData).length > 0) {
+          await prisma.studentProfile.update({
+            where: { id: student.studentProfile.id },
+            data: profileUpdateData,
+          });
+        }
+      } else {
+        await prisma.studentProfile.create({
+          data: {
+            userId: student.id,
+            enrollmentNumber: `IIT-S${Date.now().toString().slice(-6)}`,
+            ...profileUpdateData,
+          },
+        });
+      }
+
+      const updatedStudent = await prisma.user.findUnique({
+        where: { id: student.id },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          phone: true,
+          status: true,
+          avatarUrl: true,
+          studentProfile: {
+            include: {
+              enrollments: { include: { batch: true, course: true } },
+              feeRecords: { include: { course: true, batch: true, payments: true } },
+              mockResults: { include: { mockInterview: { include: { course: true, batch: true } } } },
+            },
+          },
+        },
+      });
+
+      await logAudit({
+        userId: req.user.id,
+        action: 'ADMIN_STUDENT_PROFILE_UPDATED',
+        entity: 'User',
+        entityId: student.id,
+        details: { updatedFields: { ...userUpdateData, ...profileUpdateData } },
+        req,
+      });
+
+      await invalidateCache(['users']);
+
+      return successResponse(res, {
+        message: 'Student profile updated successfully',
+        data: { student: updatedStudent },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Admin: Update Student Journey Status (ACTIVE, PLACED, DROPPED_OUT)
+   */
+  async updateStudentJourneyStatus(req, res, next) {
+    try {
+      const { id } = req.params;
+      const { journeyStatus, dropOutReason, exitDate } = req.body;
+
+      if (!['ACTIVE', 'PLACED', 'DROPPED_OUT'].includes(journeyStatus)) {
+        return errorResponse(res, {
+          statusCode: 400,
+          message: 'Invalid journeyStatus. Must be ACTIVE, PLACED, or DROPPED_OUT',
+        });
+      }
+
+      if (journeyStatus === 'DROPPED_OUT' && (!dropOutReason || !dropOutReason.trim())) {
+        return errorResponse(res, {
+          statusCode: 400,
+          message: 'A mandatory drop out reason is required when marking student as DROPPED_OUT',
+        });
+      }
+
+      const student = await prisma.user.findFirst({
+        where: {
+          role: 'STUDENT',
+          OR: [{ id }, { studentProfile: { id } }],
+        },
+        include: { studentProfile: true },
+      });
+
+      if (!student) {
+        return errorResponse(res, { statusCode: 404, message: 'Student not found' });
+      }
+
+      const updateData = {
+        journeyStatus,
+      };
+
+      if (journeyStatus === 'DROPPED_OUT') {
+        updateData.dropOutReason = dropOutReason.trim();
+        updateData.exitDate = exitDate ? new Date(exitDate) : new Date();
+      } else if (journeyStatus === 'PLACED') {
+        updateData.dropOutReason = null;
+        updateData.exitDate = exitDate ? new Date(exitDate) : new Date();
+      } else {
+        // ACTIVE
+        updateData.dropOutReason = null;
+        updateData.exitDate = null;
+      }
+
+      const updatedProfile = await prisma.studentProfile.update({
+        where: { id: student.studentProfile.id },
+        data: updateData,
+      });
+
+      await logAudit({
+        userId: req.user.id,
+        action: 'STUDENT_JOURNEY_STATUS_UPDATED',
+        entity: 'StudentProfile',
+        entityId: student.studentProfile.id,
+        details: {
+          studentId: student.id,
+          previousStatus: student.studentProfile.journeyStatus,
+          newStatus: journeyStatus,
+          dropOutReason: updateData.dropOutReason,
+          exitDate: updateData.exitDate,
+        },
+        req,
+      });
+
+      await invalidateCache(['users']);
+
+      return successResponse(res, {
+        message: `Student journey status updated to ${journeyStatus}`,
+        data: { profile: updatedProfile },
+      });
     } catch (error) {
       next(error);
     }

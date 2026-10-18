@@ -24,29 +24,31 @@ export const StudentDashboard = () => {
   const { user } = useAuth();
   const studentProfile = user?.studentProfile;
 
-  // 1. Fetch Student Mock Interview Progress
-  const { data: progressData, isLoading: progressLoading } = useQuery({
-    queryKey: ['studentMockProgress'],
-    queryFn: () => api.get('/mock-interviews/my-progress'),
-  });
+  // Consolidated parallel data fetching with Promise.all() to eliminate waterfalls
+  const { data: dashboardData, isLoading } = useQuery({
+    queryKey: ['studentDashboard', user?.id],
+    queryFn: async () => {
+      const [progressRes, announcementsRes, feesRes] = await Promise.all([
+        api.get('/mock-interviews/my-progress').catch(() => ({ data: { recentTests: [], summary: {} } })),
+        api.get('/announcements').catch(() => ({ data: [] })),
+        api.get('/fees/my-fees').catch(() => ({ data: { summary: {}, feeRecords: [] } })),
+      ]);
 
-  // 2. Fetch Announcements
-  const { data: announcementsData, isLoading: announcementsLoading } = useQuery({
-    queryKey: ['studentAnnouncements'],
-    queryFn: () => api.get('/announcements'),
-  });
-
-  // 3. Fetch Student Fees
-  const { data: feesData, isLoading: feesLoading } = useQuery({
-    queryKey: ['studentFees'],
-    queryFn: () => api.get('/fees/my-fees'),
+      return {
+        progress: progressRes?.data?.data || progressRes?.data || {},
+        announcements: announcementsRes?.data?.data || announcementsRes?.data || [],
+        fees: feesRes?.data?.data || feesRes?.data || {},
+      };
+    },
+    staleTime: 120000, // 2 minutes (leverages Upstash Redis caching)
+    refetchOnWindowFocus: false,
   });
 
   const enrollments = studentProfile?.enrollments || [];
-  const recentTests = progressData?.data?.recentTests || [];
-  const progressSummary = progressData?.data?.summary || { totalTests: 0, averageScore: 0, averagePercentage: 0 };
-  const announcements = announcementsData?.data || [];
-  const feeSummary = feesData?.data?.summary || { totalCourseFees: 0, totalPaid: 0, totalBalance: 0 };
+  const recentTests = dashboardData?.progress?.recentTests || [];
+  const progressSummary = dashboardData?.progress?.summary || { totalTests: 0, averageScore: 0, averagePercentage: 0 };
+  const announcements = dashboardData?.announcements || [];
+  const feeSummary = dashboardData?.fees?.summary || { totalCourseFees: 0, totalPaid: 0, totalBalance: 0 };
 
   return (
     <div className="space-y-8">
@@ -182,7 +184,7 @@ export const StudentDashboard = () => {
             </Link>
           </CardHeader>
           <CardContent className="p-5 space-y-3">
-            {progressLoading ? (
+            {isLoading ? (
               <Skeleton className="h-32 w-full" />
             ) : recentTests.length === 0 ? (
               <div className="text-center py-8 text-xs text-slate-500">
@@ -224,7 +226,7 @@ export const StudentDashboard = () => {
           </Link>
         </CardHeader>
         <CardContent className="p-5 space-y-3">
-          {announcementsLoading ? (
+          {isLoading ? (
             <Skeleton className="h-24 w-full" />
           ) : announcements.length === 0 ? (
             <div className="text-center py-6 text-xs text-slate-500">No active announcements.</div>

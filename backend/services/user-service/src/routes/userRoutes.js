@@ -38,6 +38,10 @@ router.get(
   cacheMiddleware({ prefix: 'users', ttl: 180 }),
   userController.getStudentById
 );
+// Admin student editing & journey status management
+router.put('/students/:id', authenticate, requireRole('ADMIN'), userController.updateStudentByAdmin);
+router.patch('/students/:id/journey-status', authenticate, requireRole('ADMIN'), userController.updateStudentJourneyStatus);
+
 
 // Teachers (cached for 3 minutes)
 router.get(
