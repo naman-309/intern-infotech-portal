@@ -11,6 +11,7 @@ router.get('/my-fees', requireRole('STUDENT'), feeController.getMyFees);
 
 // Admin view and update fees
 router.get('/', requireRole('ADMIN'), feeController.getAllFees);
+router.post('/:id/payments', requireRole('ADMIN'), feeController.recordPayment);
 router.put('/:id', requireRole('ADMIN'), feeController.updateFeeRecord);
 
 module.exports = router;

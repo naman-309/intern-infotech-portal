@@ -119,6 +119,9 @@ const initEmailSubscriber = () => {
         case 'EXAM_RESULT':
           await emailUtils.sendExamResultsPublishedEmail(payload);
           break;
+        case 'FEE_PAYMENT':
+          await emailUtils.sendFeePaymentEmail(payload);
+          break;
         default:
           console.warn(`[EmailSubscriber] Unknown email type received: ${type}`);
       }
@@ -142,7 +145,7 @@ const initEmailSubscriber = () => {
 /**
  * Publish an email job to the Redis email_channel.
  *
- * @param {string} type    - Email type key: 'VERIFICATION' | 'APPROVAL' | 'REJECTION' | 'PASSWORD_RESET' | 'EXAM_RESULT'
+ * @param {string} type    - Email type key: 'VERIFICATION' | 'APPROVAL' | 'REJECTION' | 'PASSWORD_RESET' | 'EXAM_RESULT' | 'FEE_PAYMENT'
  * @param {object} payload - Data required by the corresponding email template function.
  */
 const queueEmail = async (type, payload) => {
@@ -175,6 +178,9 @@ const queueEmail = async (type, payload) => {
           break;
         case 'EXAM_RESULT':
           await emailUtils.sendExamResultsPublishedEmail(payload);
+          break;
+        case 'FEE_PAYMENT':
+          await emailUtils.sendFeePaymentEmail(payload);
           break;
         default:
           console.warn(`[DirectEmail] Unknown email type: ${type}`);

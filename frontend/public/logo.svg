@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 120" width="100%" height="100%">
+  <defs>
+    <style>
+      .intern-text { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-weight: 900; font-size: 58px; fill: #0284c7; letter-spacing: -1.5px; }
+      .infotech-text-dark { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-weight: 900; font-size: 58px; fill: #0f172a; letter-spacing: -1.5px; }
+      .infotech-text-light { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-weight: 900; font-size: 58px; fill: #f8fafc; letter-spacing: -1.5px; }
+      .bar-line { stroke: #004d61; stroke-width: 8; stroke-linecap: round; }
+    </style>
+  </defs>
+  
+  <!-- INTERN in Sky Blue -->
+  <text x="12" y="72" class="intern-text">INTERN</text>
+  
+  <!-- INFOTECH in Charcoal/White -->
+  <text x="238" y="72" class="infotech-text-light">INFOTECH</text>
+  
+  <!-- Underline Bar in Deep Teal / Dark Cyan -->
+  <line x1="14" y1="96" x2="506" y2="96" class="bar-line" />
+</svg>

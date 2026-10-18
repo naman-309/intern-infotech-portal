@@ -5,6 +5,7 @@ const password = require('./utils/password');
 const jwt = require('./utils/jwt');
 const email = require('./utils/email');
 const queue = require('./utils/queue'); // exports: queueEmail, initEmailSubscriber, isRedisAvailable
+const cache = require('./utils/cache'); // exports: getCache, setCache, delCache, invalidateCache, purgeAllCache, cacheMiddleware
 const cloudinary = require('./utils/cloudinary');
 const auth = require('./middleware/auth');
 const rateLimiter = require('./middleware/rateLimiter');
@@ -19,6 +20,7 @@ module.exports = {
   ...jwt,
   ...email,
   ...queue,
+  ...cache,
   ...cloudinary,
   ...auth,
   ...rateLimiter,

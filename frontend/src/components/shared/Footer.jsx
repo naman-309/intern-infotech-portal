@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Code2, MapPin, Phone, Mail, Shield, BookOpen, ExternalLink } from 'lucide-react';
+import { Logo } from './Logo';
+import { MapPin, Phone, Mail, Shield, BookOpen, ExternalLink } from 'lucide-react';
 
 export const Footer = () => {
   return (
@@ -9,14 +10,9 @@ export const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Col 1: Institute Brand */}
           <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white">
-                <Code2 className="w-5 h-5" />
-              </div>
-              <span className="text-base font-bold text-slate-100 tracking-tight">
-                INTERN <span className="text-indigo-400">INFOTECH</span>
-              </span>
-            </div>
+            <Link to="/" className="inline-block">
+              <Logo textClassName="text-lg" isDark={true} />
+            </Link>
             <p className="text-xs text-slate-400 leading-relaxed">
               An elite offline software engineering institute training top engineers, system architects, and distributed cloud builders through rigorous laboratory projects.
             </p>

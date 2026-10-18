@@ -194,6 +194,60 @@ const sendExamResultsPublishedEmail = async ({ to, fullName, testTitle, subject,
   });
 };
 
+/**
+ * Send Fee Payment Confirmation & Receipt Email
+ */
+const sendFeePaymentEmail = async (payload) => {
+  const to = payload.to || payload.email;
+  const studentName = payload.studentName || payload.fullName || 'Student';
+  const amount = payload.amount !== undefined ? payload.amount : payload.amountPaid !== undefined ? payload.amountPaid : 0;
+  const totalPaid = payload.totalPaid !== undefined ? payload.totalPaid : 0;
+  const balanceAmount = payload.balanceAmount !== undefined ? payload.balanceAmount : 0;
+  const totalFee = payload.totalFee !== undefined ? payload.totalFee : 0;
+  const courseTitle = payload.courseTitle || payload.courseName || 'Enrolled Course';
+  const paymentMethod = payload.paymentMethod || 'UPI';
+  const transactionRef = payload.transactionRef || 'N/A';
+  const receiptNumber = payload.receiptNumber || 'N/A';
+
+  if (!to) {
+    console.error('[sendFeePaymentEmail] Missing recipient email address. Payload received:', payload);
+    throw new Error('No recipient email address defined for fee payment receipt');
+  }
+
+  const mailer = getTransporter();
+  const html = baseTemplate(
+    'Fee Payment Acknowledgment - Intern Infotech',
+    `
+    <h2>Official Payment Receipt</h2>
+    <p>Dear ${studentName},</p>
+    <p>We have successfully received and recorded an offline fee payment for your course <strong>${courseTitle}</strong>.</p>
+    
+    <div style="background-color: #0f172a; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #334155; font-family: monospace;">
+      <p style="margin: 6px 0; font-size: 14px;"><strong>Amount Received:</strong> <span style="color: #38bdf8; font-weight: bold; font-size: 16px;">₹${Number(amount).toLocaleString('en-IN')}</span></p>
+      <p style="margin: 6px 0; font-size: 13px;"><strong>Payment Method:</strong> ${paymentMethod}</p>
+      <p style="margin: 6px 0; font-size: 13px;"><strong>Transaction Ref:</strong> ${transactionRef || 'N/A'}</p>
+      <p style="margin: 6px 0; font-size: 13px;"><strong>Receipt Number:</strong> ${receiptNumber || 'N/A'}</p>
+      <hr style="border: 0; border-top: 1px solid #334155; margin: 12px 0;" />
+      <p style="margin: 4px 0; font-size: 13px;"><strong>Total Course Tuition:</strong> ₹${Number(totalFee).toLocaleString('en-IN')}</p>
+      <p style="margin: 4px 0; font-size: 13px;"><strong>Total Paid to Date:</strong> ₹${Number(totalPaid).toLocaleString('en-IN')}</p>
+      <p style="margin: 4px 0; font-size: 13px;"><strong>Remaining Dues:</strong> <span style="color: ${balanceAmount > 0 ? '#fbbf24' : '#4ade80'}; font-weight: bold;">₹${Number(balanceAmount).toLocaleString('en-IN')}</span></p>
+    </div>
+    
+    <p>You can view your complete chronological payment log anytime by visiting your Student Portal.</p>
+    `
+  );
+
+  const result = await mailer.sendMail({
+    from: `"${config.smtp.fromName}" <${config.smtp.fromAddress}>`,
+    to,
+    subject: `Fee Payment Receipt: ₹${Number(amount).toLocaleString('en-IN')} Received - Intern Infotech`,
+    html,
+  });
+
+  console.log(`[sendFeePaymentEmail] Receipt email successfully dispatched to ${to} for ₹${amount}`);
+  return result;
+};
+
 module.exports = {
   getTransporter,
   sendVerificationEmail,
@@ -201,4 +255,5 @@ module.exports = {
   sendRejectionEmail,
   sendPasswordResetEmail,
   sendExamResultsPublishedEmail,
+  sendFeePaymentEmail,
 };

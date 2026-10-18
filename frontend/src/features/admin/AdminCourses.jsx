@@ -219,32 +219,43 @@ export const AdminCourses = () => {
       >
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1">Course Title</label>
-            <Input placeholder="e.g. Distributed Systems & Cloud Architecture" error={errors.title?.message} {...register('title')} />
+            <label className="block text-xs font-semibold text-slate-200 mb-1">
+              Course Name <span className="text-rose-400">*</span>
+            </label>
+            <Input placeholder="e.g. Full-Stack Cloud & Microservices Engineering" error={errors.title?.message} {...register('title')} />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">Duration</label>
-              <Input placeholder="e.g. 24 Weeks (6 Months)" error={errors.duration?.message} {...register('duration')} />
+              <label className="block text-xs font-semibold text-slate-200 mb-1">
+                Duration (in months) <span className="text-rose-400">*</span>
+              </label>
+              <Input placeholder="e.g. 6 Months (or 24 Weeks)" error={errors.duration?.message} {...register('duration')} />
+              <p className="text-[10px] text-slate-500 mt-1">Specify total duration in months (e.g. 3, 4, 6 Months)</p>
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">Advertised Tuition (INR)</label>
+              <label className="block text-xs font-semibold text-slate-200 mb-1">Advertised Tuition (INR)</label>
               <Input type="number" placeholder="65000" error={errors.advertisedFee?.message} {...register('advertisedFee')} />
+              <p className="text-[10px] text-slate-500 mt-1">Standard offline laboratory fee</p>
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1">Course Thumbnail Image URL</label>
-            <Input placeholder="https://..." error={errors.thumbnailUrl?.message} {...register('thumbnailUrl')} />
+            <label className="block text-xs font-semibold text-slate-200 mb-1">
+              Course Image <span className="text-rose-400">*</span>
+            </label>
+            <Input placeholder="https://images.unsplash.com/photo-..." error={errors.thumbnailUrl?.message} {...register('thumbnailUrl')} />
+            <p className="text-[10px] text-slate-500 mt-1">Direct URL to course cover photo</p>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1">Full Description</label>
+            <label className="block text-xs font-semibold text-slate-200 mb-1">
+              Description <span className="text-rose-400">*</span>
+            </label>
             <textarea
               rows={3}
               placeholder="Describe the curriculum topics, hands-on lab projects, and technical prerequisites..."
-              className="flex w-full rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-indigo-500"
+              className="flex w-full rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-sky-500"
               {...register('description')}
             />
           </div>

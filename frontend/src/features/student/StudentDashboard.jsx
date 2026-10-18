@@ -24,10 +24,10 @@ export const StudentDashboard = () => {
   const { user } = useAuth();
   const studentProfile = user?.studentProfile;
 
-  // 1. Fetch Student Results
-  const { data: resultsData, isLoading: resultsLoading } = useQuery({
-    queryKey: ['studentResults'],
-    queryFn: () => api.get('/results/my-results'),
+  // 1. Fetch Student Mock Interview Progress
+  const { data: progressData, isLoading: progressLoading } = useQuery({
+    queryKey: ['studentMockProgress'],
+    queryFn: () => api.get('/mock-interviews/my-progress'),
   });
 
   // 2. Fetch Announcements
@@ -43,8 +43,8 @@ export const StudentDashboard = () => {
   });
 
   const enrollments = studentProfile?.enrollments || [];
-  const results = resultsData?.data?.results || [];
-  const resultsSummary = resultsData?.data?.summary || { totalExams: 0, overallPercentage: 0 };
+  const recentTests = progressData?.data?.recentTests || [];
+  const progressSummary = progressData?.data?.summary || { totalTests: 0, averageScore: 0, averagePercentage: 0 };
   const announcements = announcementsData?.data || [];
   const feeSummary = feesData?.data?.summary || { totalCourseFees: 0, totalPaid: 0, totalBalance: 0 };
 
@@ -85,13 +85,15 @@ export const StudentDashboard = () => {
         <Card>
           <CardContent className="p-5 flex items-center justify-between">
             <div>
-              <p className="text-xs text-slate-400 font-medium">Overall Score Avg</p>
+              <p className="text-xs text-slate-400 font-medium">Mock Interview Avg</p>
               <h3 className="text-2xl font-bold text-white mt-1 font-mono">
-                {resultsSummary.overallPercentage ? `${resultsSummary.overallPercentage}%` : 'N/A'}
+                {progressSummary.totalTests > 0 ? `${progressSummary.averageScore} / 35` : 'N/A'}
               </h3>
-              <p className="text-[11px] text-indigo-400 mt-1">Across {resultsSummary.totalExams} Published Exams</p>
+              <p className="text-[11px] text-brand-400 mt-1">
+                {progressSummary.totalTests > 0 ? `${progressSummary.averagePercentage}% across ${progressSummary.totalTests} tests` : '35.0 scale'}
+              </p>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-brand-500/10 text-brand-400 flex items-center justify-center">
               <Award className="w-5 h-5" />
             </div>
           </CardContent>
@@ -136,7 +138,7 @@ export const StudentDashboard = () => {
               <CardDescription>Offline laboratory courses and schedules</CardDescription>
             </div>
             <Link to="/student/courses">
-              <Button variant="ghost" size="sm" className="text-xs text-indigo-400">
+              <Button variant="ghost" size="sm" className="text-xs text-brand-400">
                 View All <ArrowRight className="w-3.5 h-3.5 ml-1" />
               </Button>
             </Link>
@@ -153,7 +155,7 @@ export const StudentDashboard = () => {
                     <h4 className="text-sm font-bold text-white">{e.course.title}</h4>
                     <Badge variant="success">Active Enrollment</Badge>
                   </div>
-                  <div className="text-xs text-indigo-400 font-mono">
+                  <div className="text-xs text-brand-400 font-mono">
                     Batch: {e.batch.name} ({e.batch.batchCode})
                   </div>
                   <div className="text-[11px] text-slate-400 flex items-center gap-2">
@@ -166,38 +168,38 @@ export const StudentDashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Section 2: Recent Published Results */}
+        {/* Section 2: Recent Mock Interview Progress */}
         <Card className="flex flex-col justify-between">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
-              <CardTitle>Recent Offline Test Results</CardTitle>
-              <CardDescription>Strictly verified and published laboratory grades</CardDescription>
+              <CardTitle>Mock Interview Scores</CardTitle>
+              <CardDescription>Evaluated out of 35 marks</CardDescription>
             </div>
             <Link to="/student/results">
-              <Button variant="ghost" size="sm" className="text-xs text-indigo-400">
-                View Full History <ArrowRight className="w-3.5 h-3.5 ml-1" />
+              <Button variant="ghost" size="sm" className="text-xs text-brand-400">
+                Progress Report <ArrowRight className="w-3.5 h-3.5 ml-1" />
               </Button>
             </Link>
           </CardHeader>
           <CardContent className="p-5 space-y-3">
-            {resultsLoading ? (
+            {progressLoading ? (
               <Skeleton className="h-32 w-full" />
-            ) : results.length === 0 ? (
+            ) : recentTests.length === 0 ? (
               <div className="text-center py-8 text-xs text-slate-500">
-                No examination results have been published for your profile yet.
+                No mock interview evaluations recorded yet.
               </div>
             ) : (
-              results.slice(0, 3).map((res) => (
+              recentTests.slice(0, 3).map((res) => (
                 <div key={res.id} className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between">
                   <div>
-                    <h5 className="text-xs font-semibold text-white">{res.exam.title}</h5>
-                    <p className="text-[11px] text-slate-400">{res.exam.subject} • {formatDate(res.exam.examDate)}</p>
+                    <h5 className="text-xs font-semibold text-white">{res.title}</h5>
+                    <p className="text-[11px] text-slate-400">{res.course} • {formatDate(res.date)}</p>
                   </div>
                   <div className="text-right">
-                    <div className="text-sm font-bold text-indigo-400 font-mono">
-                      {res.marksObtained} / {res.exam.maxMarks}
+                    <div className="text-sm font-bold text-emerald-400 font-mono">
+                      {res.marksObtained} <span className="text-slate-500 text-xs font-normal">/ 35</span>
                     </div>
-                    <Badge variant={res.percentage >= 75 ? 'success' : 'warning'} className="text-[10px]">
+                    <Badge variant={res.percentage >= 75 ? 'success' : res.percentage >= 50 ? 'primary' : 'warning'} className="text-[10px]">
                       {res.percentage}%
                     </Badge>
                   </div>

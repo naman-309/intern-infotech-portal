@@ -91,6 +91,7 @@ const academicRoutesPrefixes = [
   '/api/v1/success-stories',
   '/api/v1/fees',
   '/api/v1/public',
+  '/api/v1/mock-interviews',
 ];
 app.use(
   academicRoutesPrefixes,
