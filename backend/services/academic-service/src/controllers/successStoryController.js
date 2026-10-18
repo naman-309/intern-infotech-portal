@@ -5,6 +5,7 @@ const {
   errorResponse,
   paginatedResponse,
   logAudit,
+  invalidateCache,
 } = require('@portal/shared');
 
 const storySchema = z.object({
@@ -107,6 +108,8 @@ class SuccessStoryController {
         req,
       });
 
+      await invalidateCache(['stories']);
+
       return successResponse(res, {
         statusCode: 201,
         message: 'Student success story created successfully',
@@ -138,6 +141,8 @@ class SuccessStoryController {
         req,
       });
 
+      await invalidateCache(['stories']);
+
       return successResponse(res, {
         message: 'Success story updated successfully',
         data: { story },
@@ -162,6 +167,8 @@ class SuccessStoryController {
         entityId: id,
         req,
       });
+
+      await invalidateCache(['stories']);
 
       return successResponse(res, { message: 'Success story deleted' });
     } catch (error) {

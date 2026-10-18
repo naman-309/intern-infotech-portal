@@ -6,6 +6,7 @@ const {
   errorResponse,
   paginatedResponse,
   logAudit,
+  invalidateCache,
 } = require('@portal/shared');
 
 const courseSchema = z.object({
@@ -161,6 +162,9 @@ class CourseController {
         req,
       });
 
+      // Invalidate Upstash Redis cache so fresh data appears instantly
+      await invalidateCache(['courses', 'public']);
+
       return successResponse(res, {
         statusCode: 201,
         message: 'Course created successfully',
@@ -198,6 +202,9 @@ class CourseController {
         req,
       });
 
+      // Invalidate Upstash Redis cache so fresh data appears instantly
+      await invalidateCache(['courses', 'public']);
+
       return successResponse(res, {
         message: 'Course updated successfully',
         data: { course },
@@ -225,6 +232,9 @@ class CourseController {
         entityId: course.id,
         req,
       });
+
+      // Invalidate Upstash Redis cache so fresh data appears instantly
+      await invalidateCache(['courses', 'public']);
 
       return successResponse(res, {
         message: 'Course archived successfully. Historical records preserved.',

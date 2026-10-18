@@ -7,6 +7,7 @@ const {
   errorResponse,
   paginatedResponse,
   logAudit,
+  invalidateCache,
 } = require('@portal/shared');
 
 const updateProfileSchema = z.object({
@@ -88,6 +89,8 @@ class UserController {
         details: { fields: Object.keys(data) },
         req,
       });
+
+      await invalidateCache(['users']);
 
       return successResponse(res, {
         message: 'Profile updated successfully',
@@ -374,6 +377,8 @@ class UserController {
         details: { previousStatus: user.status, newStatus: status, userEmail: user.email },
         req,
       });
+
+      await invalidateCache(['users', 'auth']);
 
       return successResponse(res, {
         message: `User status changed to ${status}`,

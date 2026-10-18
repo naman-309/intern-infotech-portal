@@ -5,6 +5,7 @@ const {
   errorResponse,
   paginatedResponse,
   logAudit,
+  invalidateCache,
 } = require('@portal/shared');
 
 const saveMockInterviewSchema = z.object({
@@ -301,6 +302,8 @@ class MockInterviewController {
         req,
       });
 
+      await invalidateCache(['mock_interviews']);
+
       return successResponse(res, {
         statusCode: 200,
         message: 'Mock Interview marks submitted and published successfully',
@@ -372,6 +375,8 @@ class MockInterviewController {
         details: {},
         req,
       });
+
+      await invalidateCache(['mock_interviews']);
 
       return successResponse(res, { message: 'Mock interview deleted successfully' });
     } catch (error) {

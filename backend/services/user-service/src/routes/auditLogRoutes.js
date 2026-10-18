@@ -4,13 +4,14 @@ const {
   authenticate,
   requireRole,
   paginatedResponse,
+  cacheMiddleware,
 } = require('@portal/shared');
 
 const router = express.Router();
 
 router.use(authenticate, requireRole('ADMIN'));
 
-router.get('/', async (req, res, next) => {
+router.get('/', cacheMiddleware({ prefix: 'audit_logs', ttl: 60 }), async (req, res, next) => {
   try {
     const { action, entity, page = 1, limit = 20 } = req.query;
     const skip = (Number(page) - 1) * Number(limit);

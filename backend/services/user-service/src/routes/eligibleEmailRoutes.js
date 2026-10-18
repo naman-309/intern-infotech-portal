@@ -1,12 +1,12 @@
 const express = require('express');
 const eligibleEmailController = require('../controllers/eligibleEmailController');
-const { authenticate, requireRole } = require('@portal/shared');
+const { authenticate, requireRole, cacheMiddleware } = require('@portal/shared');
 
 const router = express.Router();
 
 router.use(authenticate, requireRole('ADMIN'));
 
-router.get('/', eligibleEmailController.getEligibleEmails);
+router.get('/', cacheMiddleware({ prefix: 'eligible_emails', ttl: 180 }), eligibleEmailController.getEligibleEmails);
 router.post('/', eligibleEmailController.addEligibleEmail);
 router.post('/bulk', eligibleEmailController.bulkImport);
 router.delete('/:id', eligibleEmailController.deleteEligibleEmail);

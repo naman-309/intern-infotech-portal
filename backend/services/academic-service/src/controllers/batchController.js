@@ -5,6 +5,7 @@ const {
   errorResponse,
   paginatedResponse,
   logAudit,
+  invalidateCache,
 } = require('@portal/shared');
 
 const createBatchSchema = z.object({
@@ -206,6 +207,8 @@ class BatchController {
         req,
       });
 
+      await invalidateCache(['batches', 'courses']);
+
       return successResponse(res, {
         statusCode: 201,
         message: 'Batch created successfully',
@@ -236,6 +239,8 @@ class BatchController {
         entityId: batch.id,
         req,
       });
+
+      await invalidateCache(['batches', 'courses']);
 
       return successResponse(res, {
         message: 'Batch updated successfully',
@@ -278,6 +283,8 @@ class BatchController {
         req,
       });
 
+      await invalidateCache(['batches']);
+
       return successResponse(res, {
         message: 'Teacher assigned to batch successfully',
         data: { assignment },
@@ -306,6 +313,8 @@ class BatchController {
         details: { teacherId },
         req,
       });
+
+      await invalidateCache(['batches']);
 
       return successResponse(res, { message: 'Teacher assignment removed' });
     } catch (error) {
@@ -364,6 +373,8 @@ class BatchController {
         details: { studentId, courseId: batch.courseId },
         req,
       });
+
+      await invalidateCache(['batches', 'fees']);
 
       return successResponse(res, {
         statusCode: 201,

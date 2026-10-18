@@ -7,6 +7,7 @@ const {
   paginatedResponse,
   queueEmail,
   logAudit,
+  invalidateCache,
 } = require('@portal/shared');
 
 const reviewSchema = z.object({
@@ -128,6 +129,8 @@ class RegistrationController {
           req,
         });
 
+        await invalidateCache(['registrations']);
+
         return successResponse(res, {
           message: `${request.role} registration request rejected.`,
           data: { request: updated },
@@ -248,6 +251,8 @@ class RegistrationController {
           req,
         });
 
+        await invalidateCache(['registrations', 'users', 'batches', 'fees', 'eligible_emails']);
+
         return successResponse(res, {
           message: 'Student registration approved successfully and portal account activated.',
           data: { email: request.email, enrollmentNumber },
@@ -306,6 +311,8 @@ class RegistrationController {
           details: { email: request.email, employeeId },
           req,
         });
+
+        await invalidateCache(['registrations', 'users']);
 
         return successResponse(res, {
           message: 'Teacher registration approved successfully and portal account activated.',

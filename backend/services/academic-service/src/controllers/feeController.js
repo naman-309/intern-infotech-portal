@@ -6,6 +6,7 @@ const {
   paginatedResponse,
   logAudit,
   queueEmail,
+  invalidateCache,
 } = require('@portal/shared');
 
 const updateFeeSchema = z.object({
@@ -238,6 +239,8 @@ class FeeController {
         req,
       });
 
+      await invalidateCache(['fees']);
+
       return successResponse(res, {
         statusCode: 201,
         message: 'Payment recorded and student notified successfully',
@@ -285,6 +288,8 @@ class FeeController {
         details: { paidAmount: data.paidAmount, balanceAmount },
         req,
       });
+
+      await invalidateCache(['fees']);
 
       return successResponse(res, {
         message: 'Fee record updated successfully',
