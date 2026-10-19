@@ -40,7 +40,7 @@ export const StudentDashboard = () => {
         fees: feesRes?.data?.data || feesRes?.data || {},
       };
     },
-    staleTime: 120000, // 2 minutes (leverages Upstash Redis caching)
+    staleTime: 1200000, // 20 minutes (leverages Upstash Redis caching)
     refetchOnWindowFocus: false,
   });
 

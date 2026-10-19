@@ -6,13 +6,13 @@ const router = express.Router();
 
 router.use(authenticate);
 
-// Student progress report (cached per student for 2 mins)
+// Student progress report (cached per student for 30 mins)
 router.get(
   '/my-progress',
   requireRole('STUDENT'),
   cacheMiddleware({
     prefix: 'mock_interviews',
-    ttl: 120,
+    ttl: 1800,
     keyGenerator: (req) => `cache:mock_interviews:student:${req.user.id}`,
   }),
   mockInterviewController.getMyProgressReport
@@ -22,22 +22,22 @@ router.get(
 router.get(
   '/session',
   requireRole('ADMIN', 'TEACHER'),
-  cacheMiddleware({ prefix: 'mock_interviews', ttl: 120 }),
+  cacheMiddleware({ prefix: 'mock_interviews', ttl: 1800 }),
   mockInterviewController.getSession
 );
 router.post('/save', requireRole('ADMIN', 'TEACHER'), mockInterviewController.saveSession);
 
-// Admin & Teacher list, view, delete
+// Admin & Teacher list, view, delete (Cached for 30 mins)
 router.get(
   '/',
   requireRole('ADMIN', 'TEACHER'),
-  cacheMiddleware({ prefix: 'mock_interviews', ttl: 180 }),
+  cacheMiddleware({ prefix: 'mock_interviews', ttl: 1800 }),
   mockInterviewController.getAll
 );
 router.get(
   '/:id',
   requireRole('ADMIN', 'TEACHER'),
-  cacheMiddleware({ prefix: 'mock_interviews', ttl: 180 }),
+  cacheMiddleware({ prefix: 'mock_interviews', ttl: 1800 }),
   mockInterviewController.getById
 );
 router.delete('/:id', requireRole('ADMIN'), mockInterviewController.delete);
