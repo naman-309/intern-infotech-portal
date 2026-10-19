@@ -8,7 +8,7 @@ router.get(
   '/',
   authenticate,
   requireRole('ADMIN', 'TEACHER'),
-  cacheMiddleware({ prefix: 'registrations', ttl: 120 }),
+  cacheMiddleware({ prefix: 'registrations', ttl: 1800 }),
   registrationController.getRequests
 );
 router.post('/:id/review', authenticate, requireRole('ADMIN', 'TEACHER'), registrationController.reviewRequest);

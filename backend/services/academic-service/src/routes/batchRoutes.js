@@ -6,8 +6,8 @@ const router = express.Router();
 
 router.use(authenticate);
 
-router.get('/', cacheMiddleware({ prefix: 'batches', ttl: 180 }), batchController.getBatches);
-router.get('/:id', cacheMiddleware({ prefix: 'batches', ttl: 180 }), batchController.getBatchById);
+router.get('/', cacheMiddleware({ prefix: 'batches', ttl: 1800 }), batchController.getBatches);
+router.get('/:id', cacheMiddleware({ prefix: 'batches', ttl: 1800 }), batchController.getBatchById);
 
 // Admin-only operations
 router.post('/', requireRole('ADMIN'), batchController.createBatch);

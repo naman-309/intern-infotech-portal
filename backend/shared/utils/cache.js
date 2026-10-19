@@ -152,7 +152,7 @@ async function purgeAllCache() {
  * - Returns cached response with X-Cache: HIT in ~5ms
  * - Intercepts first miss, caches to Redis with safe TTL, returns X-Cache: MISS
  */
-const cacheMiddleware = ({ prefix = 'api', ttl = 180, keyGenerator } = {}) => {
+const cacheMiddleware = ({ prefix = 'api', ttl = 1800, keyGenerator } = {}) => {
   return async (req, res, next) => {
     if (req.method !== 'GET') return next();
 

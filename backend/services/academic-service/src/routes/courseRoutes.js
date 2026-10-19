@@ -23,12 +23,12 @@ router.post('/cache/purge', authenticate, requireRole('ADMIN'), async (req, res,
   }
 });
 
-// Public course endpoints (Cached in Redis for 180s)
-router.get('/public', cacheMiddleware({ prefix: 'courses', ttl: 180 }), courseController.getPublicCourses);
-router.get('/public/:slug', cacheMiddleware({ prefix: 'courses', ttl: 180 }), courseController.getPublicCourseBySlug);
+// Public course endpoints (Cached in Redis for 30 mins)
+router.get('/public', cacheMiddleware({ prefix: 'courses', ttl: 1800 }), courseController.getPublicCourses);
+router.get('/public/:slug', cacheMiddleware({ prefix: 'courses', ttl: 1800 }), courseController.getPublicCourseBySlug);
 
-// Admin course management (Cached in Redis for 180s)
-router.get('/', authenticate, requireRole('ADMIN', 'TEACHER'), cacheMiddleware({ prefix: 'courses', ttl: 180 }), courseController.getAllCourses);
+// Admin course management (Cached in Redis for 30 mins)
+router.get('/', authenticate, requireRole('ADMIN', 'TEACHER'), cacheMiddleware({ prefix: 'courses', ttl: 1800 }), courseController.getAllCourses);
 router.post('/', authenticate, requireRole('ADMIN'), courseController.createCourse);
 router.put('/:id', authenticate, requireRole('ADMIN'), courseController.updateCourse);
 router.delete('/:id/archive', authenticate, requireRole('ADMIN'), courseController.archiveCourse);

@@ -23,19 +23,19 @@ const upload = multer({
 router.put(['/profile', '/users/profile'], authenticate, upload.single('avatar'), userController.updateProfile);
 router.post(['/change-password', '/users/change-password'], authenticate, userController.changePassword);
 
-// Students (cached for 3 minutes)
+// Students (cached for 30 minutes in Redis with automatic invalidation on updates)
 router.get(
   '/students',
   authenticate,
   requireRole('ADMIN', 'TEACHER'),
-  cacheMiddleware({ prefix: 'users', ttl: 180 }),
+  cacheMiddleware({ prefix: 'users', ttl: 1800 }),
   userController.getStudents
 );
 router.get(
   '/students/:id',
   authenticate,
   requireRole('ADMIN', 'TEACHER'),
-  cacheMiddleware({ prefix: 'users', ttl: 180 }),
+  cacheMiddleware({ prefix: 'users', ttl: 1800 }),
   userController.getStudentById
 );
 // Admin student editing & journey status management
@@ -43,12 +43,12 @@ router.put('/students/:id', authenticate, requireRole('ADMIN'), userController.u
 router.patch('/students/:id/journey-status', authenticate, requireRole('ADMIN'), userController.updateStudentJourneyStatus);
 
 
-// Teachers (cached for 3 minutes)
+// Teachers (cached for 30 minutes in Redis with automatic invalidation)
 router.get(
   '/teachers',
   authenticate,
   requireRole('ADMIN'),
-  cacheMiddleware({ prefix: 'users', ttl: 180 }),
+  cacheMiddleware({ prefix: 'users', ttl: 1800 }),
   userController.getTeachers
 );
 

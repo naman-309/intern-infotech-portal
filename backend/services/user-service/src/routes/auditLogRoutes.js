@@ -11,7 +11,7 @@ const router = express.Router();
 
 router.use(authenticate, requireRole('ADMIN'));
 
-router.get('/', cacheMiddleware({ prefix: 'audit_logs', ttl: 60 }), async (req, res, next) => {
+router.get('/', cacheMiddleware({ prefix: 'audit_logs', ttl: 1200 }), async (req, res, next) => {
   try {
     const { action, entity, page = 1, limit = 20 } = req.query;
     const skip = (Number(page) - 1) * Number(limit);
@@ -22,7 +22,7 @@ router.get('/', cacheMiddleware({ prefix: 'audit_logs', ttl: 60 }), async (req, 
       ...(entity && { entity }),
     };
 
-    const [total, logs] = await prisma.$transaction([
+    const [total, logs] = await Promise.all([
       prisma.auditLog.count({ where }),
       prisma.auditLog.findMany({
         where,
