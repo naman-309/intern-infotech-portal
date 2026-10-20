@@ -3,8 +3,6 @@ name: CI/CD Pipeline — Deploy to AWS EC2
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
   workflow_dispatch:
 
 jobs:
@@ -45,7 +43,7 @@ jobs:
     name: Deploy Container Fleet to AWS EC2
     needs: validate-and-build
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    if: github.ref == 'refs/heads/main'
 
     steps:
       - name: Checkout Code
