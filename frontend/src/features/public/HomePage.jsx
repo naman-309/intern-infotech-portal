@@ -64,6 +64,13 @@ export const HomePage = () => {
     queryFn: () => api.get('/success-stories/public'),
   });
 
+  // 4. Fetch Public Faculty (Filtered by showOnWebsite: true)
+  const { data: publicTeachersData } = useQuery({
+    queryKey: ['publicTeachers'],
+    queryFn: () => api.get('/teachers/public'),
+  });
+  const publicTeachers = publicTeachersData?.data || [];
+
   const institute = overviewData?.data || {
     name: 'Intern Infotech Institute of Software Engineering',
     tagline: 'Master Production-Grade Full-Stack & Systems Engineering with Industry Architects',
@@ -408,81 +415,157 @@ export const HomePage = () => {
         </div>
       </section>
 
-      {/* 3. MEET OUR INSTRUCTORS SECTION (Crisp, Professional & Compact) */}
+      {/* 3. MEET OUR INSTRUCTORS SECTION (Live Public Faculty Directory) */}
       <section id="instructors" className="py-20 border-b border-slate-900 bg-slate-950/60">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-2xl mx-auto mb-12 space-y-2">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-500/10 text-sky-400 text-xs font-mono">
               <Users className="w-3.5 h-3.5 text-sky-400" />
-              WORLD-CLASS FACULTY
+              INDUSTRY FACULTY & MENTORS
             </div>
             <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
-              Meet Our Lead Instructor
+              Learn Directly from Engineering Mentors
             </h2>
             <p className="text-slate-400 text-sm">
-              Learn directly from experienced engineering veterans who have built Tier-1 systems at global scale.
+              Our faculty members bring hands-on production engineering experience from top-tier tech companies.
             </p>
           </div>
 
-          <div className="max-w-3xl mx-auto">
-            <div className="relative group">
-              <div className="absolute -inset-1 rounded-3xl bg-gradient-to-r from-sky-500/30 to-indigo-500/30 opacity-40 blur-xl group-hover:opacity-60 transition-opacity"></div>
-              
-              <div className="relative rounded-3xl bg-slate-900/90 border border-slate-800 p-8 sm:p-10 shadow-2xl backdrop-blur-md">
-                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-8">
-                  {/* Instructor Avatar with Experience Badge */}
-                  <div className="relative shrink-0">
-                    <img
-                      src={leadInstructor.avatarUrl}
-                      alt={leadInstructor.name}
-                      className="w-32 h-32 sm:w-36 sm:sm:h-36 rounded-2xl object-cover border-2 border-sky-500/40 shadow-xl"
-                    />
-                    <div className="absolute -bottom-3 inset-x-0 mx-auto w-max px-2.5 py-0.5 rounded-full bg-sky-500 text-[10px] font-bold text-white uppercase tracking-wider shadow-md">
-                      12+ YRS EXP
+          <div className={`mx-auto ${publicTeachers.length > 1 ? 'grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl' : 'max-w-3xl'}`}>
+            {publicTeachers.length > 0 ? (
+              publicTeachers.map((teacher) => {
+                const profile = teacher.teacherProfile;
+                const assignments = profile?.assignments || [];
+                const coursesTaught = assignments
+                  .map((a) => a.batch?.course?.title)
+                  .filter(Boolean);
+                const uniqueCourses = [...new Set(coursesTaught)];
+
+                return (
+                  <div key={teacher.id} className="relative group">
+                    <div className="absolute -inset-1 rounded-3xl bg-gradient-to-r from-sky-500/20 to-indigo-500/20 opacity-40 blur-xl group-hover:opacity-60 transition-opacity"></div>
+                    <div className="relative rounded-3xl bg-slate-900/90 border border-slate-800 p-8 shadow-2xl backdrop-blur-md flex flex-col justify-between h-full">
+                      <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
+                        <div className="relative shrink-0">
+                          <img
+                            src={
+                              teacher.avatarUrl ||
+                              'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop&q=80'
+                            }
+                            alt={`${teacher.firstName} ${teacher.lastName}`}
+                            className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl object-cover border-2 border-sky-500/40 shadow-xl"
+                          />
+                          <div className="absolute -bottom-2 inset-x-0 mx-auto w-max px-2 py-0.5 rounded-full bg-sky-500 text-[9px] font-bold text-white uppercase tracking-wider shadow-md">
+                            FACULTY
+                          </div>
+                        </div>
+
+                        <div className="flex-1 text-center sm:text-left space-y-2">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                            <div>
+                              <h3 className="text-xl font-bold text-white">
+                                {teacher.firstName} {teacher.lastName}
+                              </h3>
+                              <p className="text-sky-400 font-medium text-xs font-mono">
+                                {profile?.specialization || 'Engineering Faculty'}
+                              </p>
+                            </div>
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-mono border border-emerald-500/30 w-max mx-auto sm:mx-0">
+                              <CheckCircle2 className="w-3 h-3" />
+                              On-Campus
+                            </span>
+                          </div>
+
+                          {profile?.qualifications && (
+                            <p className="text-[11px] font-semibold text-slate-300 font-mono">
+                              {profile.qualifications}
+                            </p>
+                          )}
+
+                          <p className="text-slate-400 text-xs leading-relaxed">
+                            {profile?.bio ||
+                              'Dedicated to guiding student cohorts through intensive system design, coding rigor, and enterprise project execution.'}
+                          </p>
+
+                          {uniqueCourses.length > 0 && (
+                            <div className="pt-2">
+                              <div className="text-[10px] uppercase tracking-wider text-slate-400 font-mono mb-1">
+                                Instructs:
+                              </div>
+                              <div className="flex flex-wrap gap-1 justify-center sm:justify-start">
+                                {uniqueCourses.map((cName) => (
+                                  <span
+                                    key={cName}
+                                    className="px-2 py-0.5 rounded-md text-[10px] font-mono bg-slate-950 border border-slate-800 text-sky-300"
+                                  >
+                                    {cName}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
-
-                  {/* Profile Details */}
-                  <div className="flex-1 text-center sm:text-left space-y-3">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <div>
-                        <h3 className="text-2xl font-bold text-white">{leadInstructor.name}</h3>
-                        <p className="text-sky-400 font-medium text-xs sm:text-sm font-mono mt-0.5">
-                          {leadInstructor.role}
-                        </p>
+                );
+              })
+            ) : (
+              <div className="relative group">
+                <div className="absolute -inset-1 rounded-3xl bg-gradient-to-r from-sky-500/30 to-indigo-500/30 opacity-40 blur-xl group-hover:opacity-60 transition-opacity"></div>
+                <div className="relative rounded-3xl bg-slate-900/90 border border-slate-800 p-8 sm:p-10 shadow-2xl backdrop-blur-md">
+                  <div className="flex flex-col sm:flex-row items-center sm:items-start gap-8">
+                    <div className="relative shrink-0">
+                      <img
+                        src={leadInstructor.avatarUrl}
+                        alt={leadInstructor.name}
+                        className="w-32 h-32 sm:w-36 sm:h-36 rounded-2xl object-cover border-2 border-sky-500/40 shadow-xl"
+                      />
+                      <div className="absolute -bottom-3 inset-x-0 mx-auto w-max px-2.5 py-0.5 rounded-full bg-sky-500 text-[10px] font-bold text-white uppercase tracking-wider shadow-md">
+                        12+ YRS EXP
                       </div>
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-mono border border-emerald-500/30 w-max mx-auto sm:mx-0">
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        Full-Time On-Campus
-                      </span>
                     </div>
 
-                    <p className="text-xs font-semibold text-slate-300 font-mono">
-                      {leadInstructor.qualifications}
-                    </p>
+                    <div className="flex-1 text-center sm:text-left space-y-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                          <h3 className="text-2xl font-bold text-white">{leadInstructor.name}</h3>
+                          <p className="text-sky-400 font-medium text-xs sm:text-sm font-mono mt-0.5">
+                            {leadInstructor.role}
+                          </p>
+                        </div>
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-mono border border-emerald-500/30 w-max mx-auto sm:mx-0">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          Full-Time On-Campus
+                        </span>
+                      </div>
 
-                    <p className="text-slate-400 text-xs sm:text-sm leading-relaxed">
-                      {leadInstructor.bio}
-                    </p>
+                      <p className="text-xs font-semibold text-slate-300 font-mono">
+                        {leadInstructor.qualifications}
+                      </p>
 
-                    {/* Expertise Domain Tags */}
-                    <div className="pt-2">
-                      <div className="text-[11px] uppercase tracking-wider text-slate-400 font-mono mb-2">Key Expertise & Domains:</div>
-                      <div className="flex flex-wrap gap-1.5 justify-center sm:justify-start">
-                        {leadInstructor.domains.map((dom) => (
-                          <span
-                            key={dom}
-                            className="px-2.5 py-1 rounded-lg text-[11px] font-mono bg-slate-950 border border-slate-800 text-slate-300 hover:border-sky-500/40 transition-colors"
-                          >
-                            {dom}
-                          </span>
-                        ))}
+                      <p className="text-slate-400 text-xs sm:text-sm leading-relaxed">
+                        {leadInstructor.bio}
+                      </p>
+
+                      <div className="pt-2">
+                        <div className="text-[11px] uppercase tracking-wider text-slate-400 font-mono mb-2">Key Domains:</div>
+                        <div className="flex flex-wrap gap-1.5 justify-center sm:justify-start">
+                          {leadInstructor.domains.map((dom) => (
+                            <span
+                              key={dom}
+                              className="px-2.5 py-1 rounded-lg text-[11px] font-mono bg-slate-950 border border-slate-800 text-slate-300"
+                            >
+                              {dom}
+                            </span>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </section>

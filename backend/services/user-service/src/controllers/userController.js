@@ -677,11 +677,281 @@ class UserController {
         req,
       });
 
-      await invalidateCache(['users', 'auth']);
+      await invalidateCache(['users', 'auth', 'teachers_public']);
 
       return successResponse(res, {
         message: `User status changed to ${status}`,
         data: { user: updated },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Public: List Teachers Visible on Institute Website
+   * Filters by showOnWebsite: true and status: ACTIVE
+   */
+  async getPublicTeachers(req, res, next) {
+    try {
+      const teachers = await prisma.user.findMany({
+        where: {
+          role: 'TEACHER',
+          status: 'ACTIVE',
+          teacherProfile: {
+            showOnWebsite: true,
+          },
+        },
+        orderBy: { createdAt: 'asc' },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          avatarUrl: true,
+          teacherProfile: {
+            select: {
+              employeeId: true,
+              specialization: true,
+              qualifications: true,
+              bio: true,
+              showOnWebsite: true,
+              assignments: {
+                include: {
+                  batch: {
+                    select: {
+                      id: true,
+                      name: true,
+                      batchCode: true,
+                      course: {
+                        select: {
+                          id: true,
+                          title: true,
+                          slug: true,
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      return successResponse(res, {
+        message: 'Public faculty list fetched successfully',
+        data: teachers,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Admin: Add New Faculty Member
+   */
+  async createTeacher(req, res, next) {
+    try {
+      const {
+        email,
+        password,
+        firstName,
+        lastName,
+        phone,
+        specialization,
+        qualifications,
+        bio,
+        showOnWebsite = true,
+      } = req.body;
+
+      if (!email || !firstName || !lastName) {
+        return errorResponse(res, { statusCode: 400, message: 'Email, First Name, and Last Name are required' });
+      }
+
+      const normalizedEmail = email.toLowerCase().trim();
+      const existingUser = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+      if (existingUser) {
+        return errorResponse(res, { statusCode: 409, message: 'A user account with this email already exists' });
+      }
+
+      const passwordHash = await hashPassword(password || 'Teacher@12345');
+      const teacherCount = await prisma.teacherProfile.count();
+      const employeeId = `IIT-T${101 + teacherCount}`;
+
+      const newTeacher = await prisma.$transaction(async (tx) => {
+        const user = await tx.user.create({
+          data: {
+            email: normalizedEmail,
+            passwordHash,
+            firstName: firstName.trim(),
+            lastName: lastName.trim(),
+            phone: phone ? phone.trim() : null,
+            role: 'TEACHER',
+            status: 'ACTIVE',
+          },
+        });
+
+        const profile = await tx.teacherProfile.create({
+          data: {
+            userId: user.id,
+            employeeId,
+            specialization: specialization ? specialization.trim() : null,
+            qualifications: qualifications ? qualifications.trim() : null,
+            bio: bio ? bio.trim() : null,
+            showOnWebsite: Boolean(showOnWebsite),
+          },
+        });
+
+        return { ...user, teacherProfile: profile };
+      });
+
+      await logAudit({
+        userId: req.user.id,
+        action: 'FACULTY_CREATED_BY_ADMIN',
+        entity: 'User',
+        entityId: newTeacher.id,
+        details: { email: normalizedEmail, employeeId, showOnWebsite },
+        req,
+      });
+
+      await invalidateCache(['users', 'teachers_public']);
+
+      return successResponse(res, {
+        statusCode: 201,
+        message: 'Faculty member created successfully',
+        data: { teacher: newTeacher },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Admin: Edit Faculty Details
+   */
+  async updateTeacher(req, res, next) {
+    try {
+      const { id } = req.params;
+      const {
+        firstName,
+        lastName,
+        phone,
+        specialization,
+        qualifications,
+        bio,
+        showOnWebsite,
+      } = req.body;
+
+      const user = await prisma.user.findFirst({
+        where: {
+          role: 'TEACHER',
+          OR: [{ id }, { teacherProfile: { id } }],
+        },
+        include: { teacherProfile: true },
+      });
+
+      if (!user || !user.teacherProfile) {
+        return errorResponse(res, { statusCode: 404, message: 'Faculty member not found' });
+      }
+
+      const userUpdateData = {};
+      if (firstName !== undefined) userUpdateData.firstName = firstName.trim();
+      if (lastName !== undefined) userUpdateData.lastName = lastName.trim();
+      if (phone !== undefined) userUpdateData.phone = phone ? phone.trim() : null;
+
+      const profileUpdateData = {};
+      if (specialization !== undefined) profileUpdateData.specialization = specialization ? specialization.trim() : null;
+      if (qualifications !== undefined) profileUpdateData.qualifications = qualifications ? qualifications.trim() : null;
+      if (bio !== undefined) profileUpdateData.bio = bio ? bio.trim() : null;
+      if (showOnWebsite !== undefined) profileUpdateData.showOnWebsite = Boolean(showOnWebsite);
+
+      const [updatedUser, updatedProfile] = await prisma.$transaction([
+        Object.keys(userUpdateData).length > 0
+          ? prisma.user.update({
+              where: { id: user.id },
+              data: userUpdateData,
+            })
+          : prisma.user.findUnique({ where: { id: user.id } }),
+        Object.keys(profileUpdateData).length > 0
+          ? prisma.teacherProfile.update({
+              where: { id: user.teacherProfile.id },
+              data: profileUpdateData,
+            })
+          : prisma.teacherProfile.findUnique({ where: { id: user.teacherProfile.id } }),
+      ]);
+
+      await logAudit({
+        userId: req.user.id,
+        action: 'FACULTY_UPDATED_BY_ADMIN',
+        entity: 'User',
+        entityId: user.id,
+        details: { userUpdates: userUpdateData, profileUpdates: profileUpdateData },
+        req,
+      });
+
+      await invalidateCache(['users', 'teachers_public']);
+
+      return successResponse(res, {
+        message: 'Faculty details updated successfully',
+        data: {
+          teacher: {
+            ...updatedUser,
+            teacherProfile: updatedProfile,
+          },
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Admin: Toggle Teacher Public Website Visibility (Show on Public Website: ON / OFF)
+   */
+  async toggleTeacherVisibility(req, res, next) {
+    try {
+      const { id } = req.params;
+      const { showOnWebsite } = req.body;
+
+      if (typeof showOnWebsite !== 'boolean') {
+        return errorResponse(res, { statusCode: 400, message: 'showOnWebsite boolean flag (true/false) is required' });
+      }
+
+      const user = await prisma.user.findFirst({
+        where: {
+          role: 'TEACHER',
+          OR: [{ id }, { teacherProfile: { id } }],
+        },
+        include: { teacherProfile: true },
+      });
+
+      if (!user || !user.teacherProfile) {
+        return errorResponse(res, { statusCode: 404, message: 'Faculty member not found' });
+      }
+
+      const updatedProfile = await prisma.teacherProfile.update({
+        where: { id: user.teacherProfile.id },
+        data: { showOnWebsite },
+      });
+
+      await logAudit({
+        userId: req.user.id,
+        action: 'TEACHER_VISIBILITY_TOGGLED',
+        entity: 'TeacherProfile',
+        entityId: user.teacherProfile.id,
+        details: { teacherId: user.id, showOnWebsite },
+        req,
+      });
+
+      await invalidateCache(['users', 'teachers_public']);
+
+      return successResponse(res, {
+        message: `Faculty public website visibility set to ${showOnWebsite ? 'ON' : 'OFF'}`,
+        data: {
+          teacherId: user.id,
+          employeeId: updatedProfile.employeeId,
+          showOnWebsite: updatedProfile.showOnWebsite,
+        },
       });
     } catch (error) {
       next(error);
