@@ -4,6 +4,7 @@ const {
   successResponse,
   errorResponse,
   logAudit,
+  invalidateCache,
 } = require('@portal/shared');
 
 const saveMarksSchema = z.object({
@@ -136,6 +137,8 @@ class ResultController {
         details: { count: entries.length, examTitle: exam.title },
         req,
       });
+
+      await invalidateCache(['exams', 'users', 'batches']);
 
       return successResponse(res, {
         message: 'Marks recorded successfully.',

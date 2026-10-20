@@ -7,6 +7,429 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id                      String                 @id @default(uuid())
+  email                   String                 @unique
+  passwordHash            String
+  role                    Role
+  status                  UserStatus             @default(ACTIVE)
+  firstName               String
+  lastName                String
+  phone                   String?
+  avatarUrl               String?
+  createdAt               DateTime               @default(now())
+  updatedAt               DateTime               @updatedAt
+  announcements           Announcement[]         @relation("AnnouncementAuthor")
+  auditLogs               AuditLog[]
+  addedEligibleEmails     EligibleStudentEmail[] @relation("AdminEligibleEmails")
+  enteredResults          ExamResult[]           @relation("ResultEnteredBy")
+  updatedResults          ExamResult[]           @relation("ResultUpdatedBy")
+  resultHistory           ExamResultHistory[]    @relation("ResultHistoryChangedBy")
+  recordedPayments        FeePayment[]           @relation("PaymentRecordedBy")
+  conductedMockInterviews MockInterview[]        @relation("MockInterviewConductedBy")
+  enteredMockResults      MockResult[]           @relation("MockResultEnteredBy")
+  createdExams            OfflineExam[]          @relation("ExamCreatedBy")
+  publishedExams          OfflineExam[]          @relation("ExamPublishedBy")
+  refreshTokens           RefreshToken[]
+  reviewedRequests        RegistrationRequest[]  @relation("RequestReviewer")
+  studentProfile          StudentProfile?
+  teacherProfile          TeacherProfile?
+
+  @@index([email])
+  @@index([firstName])
+  @@index([lastName])
+  @@index([role, status])
+  @@index([phone])
+}
+
+model StudentProfile {
+  id               String           @id @default(uuid())
+  userId           String           @unique
+  enrollmentNumber String           @unique
+  rollNumber       String?
+  guardianName     String?
+  guardianPhone    String?
+  address          String?
+  joinedAt         DateTime         @default(now())
+  status           EnrollmentStatus @default(ACTIVE)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  dropOutReason    String?
+  exitDate         DateTime?
+  joiningDate      DateTime         @default(now())
+  journeyStatus    JourneyStatus    @default(ACTIVE)
+  announcements    Announcement[]   @relation("IndividualStudentAnnouncements")
+  enrollments      Enrollment[]
+  examResults      ExamResult[]
+  feeRecords       FeeRecord[]
+  mockResults      MockResult[]
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([enrollmentNumber])
+  @@index([journeyStatus])
+  @@index([joiningDate])
+  @@index([rollNumber])
+}
+
+model TeacherProfile {
+  id             String              @id @default(uuid())
+  userId         String              @unique
+  employeeId     String              @unique
+  specialization String?
+  qualifications String?
+  bio            String?
+  joinedAt       DateTime            @default(now())
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  showOnWebsite  Boolean             @default(true)
+  assignments    TeacherAssignment[]
+  user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId])
+  @@index([showOnWebsite])
+}
+
+model EligibleStudentEmail {
+  id               String   @id @default(uuid())
+  email            String   @unique
+  fullName         String
+  offlineRegNumber String?  @unique
+  phone            String?
+  courseHint       String?
+  isRegistered     Boolean  @default(false)
+  addedByAdminId   String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  addedByAdmin     User?    @relation("AdminEligibleEmails", fields: [addedByAdminId], references: [id])
+
+  @@index([email])
+  @@index([isRegistered])
+}
+
+model RegistrationRequest {
+  id                    String        @id @default(uuid())
+  email                 String
+  fullName              String
+  phone                 String?
+  role                  Role
+  passwordHash          String
+  verificationTokenHash String?
+  tokenExpiresAt        DateTime?
+  isEmailVerified       Boolean       @default(false)
+  status                RequestStatus @default(PENDING)
+  reviewNote            String?
+  reviewerId            String?
+  reviewedAt            DateTime?
+  targetCourseId        String?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+  reviewer              User?         @relation("RequestReviewer", fields: [reviewerId], references: [id])
+
+  @@index([email])
+  @@index([status, role])
+}
+
+model Course {
+  id             String          @id @default(uuid())
+  title          String
+  slug           String          @unique
+  description    String
+  curriculum     Json?
+  duration       String
+  advertisedFee  Float           @default(0.0)
+  thumbnailUrl   String?
+  featured       Boolean         @default(false)
+  published      Boolean         @default(false)
+  displayOrder   Int             @default(0)
+  isArchived     Boolean         @default(false)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  announcements  Announcement[]
+  batches        Batch[]
+  enrollments    Enrollment[]
+  feeRecords     FeeRecord[]
+  mockInterviews MockInterview[]
+  offlineExams   OfflineExam[]
+
+  @@index([slug])
+  @@index([published, featured])
+}
+
+model Batch {
+  id             String              @id @default(uuid())
+  name           String
+  batchCode      String              @unique
+  courseId       String
+  startDate      DateTime
+  endDate        DateTime?
+  timing         String?
+  capacity       Int                 @default(30)
+  status         BatchStatus         @default(UPCOMING)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  announcements  Announcement[]
+  course         Course              @relation(fields: [courseId], references: [id])
+  enrollments    Enrollment[]
+  feeRecords     FeeRecord[]
+  mockInterviews MockInterview[]
+  offlineExams   OfflineExam[]
+  teachers       TeacherAssignment[]
+
+  @@index([batchCode])
+  @@index([courseId, status])
+}
+
+model TeacherAssignment {
+  id         String         @id @default(uuid())
+  teacherId  String
+  batchId    String
+  roleTitle  String?        @default("Primary Instructor")
+  assignedAt DateTime       @default(now())
+  batch      Batch          @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  teacher    TeacherProfile @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@unique([teacherId, batchId])
+  @@index([teacherId])
+  @@index([batchId])
+}
+
+model Enrollment {
+  id         String           @id @default(uuid())
+  studentId  String
+  batchId    String
+  courseId   String
+  enrolledAt DateTime         @default(now())
+  status     EnrollmentStatus @default(ACTIVE)
+  notes      String?
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+  batch      Batch            @relation(fields: [batchId], references: [id])
+  course     Course           @relation(fields: [courseId], references: [id])
+  student    StudentProfile   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, batchId])
+  @@index([studentId])
+  @@index([batchId])
+  @@index([courseId])
+}
+
+model OfflineExam {
+  id            String       @id @default(uuid())
+  title         String
+  subject       String
+  courseId      String
+  batchId       String
+  examDate      DateTime
+  maxMarks      Float
+  description   String?
+  status        ExamStatus   @default(DRAFT)
+  createdById   String
+  publishedById String?
+  publishedAt   DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  results       ExamResult[]
+  batch         Batch        @relation(fields: [batchId], references: [id])
+  course        Course       @relation(fields: [courseId], references: [id])
+  createdBy     User         @relation("ExamCreatedBy", fields: [createdById], references: [id])
+  publishedBy   User?        @relation("ExamPublishedBy", fields: [publishedById], references: [id])
+
+  @@index([batchId, examDate])
+  @@index([status])
+}
+
+model ExamResult {
+  id            String              @id @default(uuid())
+  examId        String
+  studentId     String
+  marksObtained Float
+  percentage    Float?
+  remarks       String?
+  status        ResultStatus        @default(DRAFT)
+  enteredById   String
+  updatedById   String?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  enteredBy     User                @relation("ResultEnteredBy", fields: [enteredById], references: [id])
+  exam          OfflineExam         @relation(fields: [examId], references: [id], onDelete: Cascade)
+  student       StudentProfile      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  updatedBy     User?               @relation("ResultUpdatedBy", fields: [updatedById], references: [id])
+  history       ExamResultHistory[]
+
+  @@unique([examId, studentId])
+  @@index([studentId])
+  @@index([examId, status])
+}
+
+model ExamResultHistory {
+  id            String     @id @default(uuid())
+  resultId      String
+  previousMarks Float
+  newMarks      Float
+  reason        String
+  changedById   String
+  changedAt     DateTime   @default(now())
+  changedBy     User       @relation("ResultHistoryChangedBy", fields: [changedById], references: [id])
+  result        ExamResult @relation(fields: [resultId], references: [id], onDelete: Cascade)
+
+  @@index([resultId])
+}
+
+model Announcement {
+  id              String             @id @default(uuid())
+  title           String
+  body            String
+  authorId        String
+  targetType      TargetAudienceType @default(ALL)
+  targetCourseId  String?
+  targetBatchId   String?
+  targetStudentId String?
+  priority        PriorityLevel      @default(MEDIUM)
+  publishDate     DateTime           @default(now())
+  expiryDate      DateTime?
+  isPublished     Boolean            @default(true)
+  emailSent       Boolean            @default(false)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  author          User               @relation("AnnouncementAuthor", fields: [authorId], references: [id])
+  targetBatch     Batch?             @relation(fields: [targetBatchId], references: [id])
+  targetCourse    Course?            @relation(fields: [targetCourseId], references: [id])
+  targetStudent   StudentProfile?    @relation("IndividualStudentAnnouncements", fields: [targetStudentId], references: [id])
+
+  @@index([targetType, isPublished])
+  @@index([publishDate])
+}
+
+model StudentSuccessStory {
+  id              String   @id @default(uuid())
+  studentName     String
+  photoUrl        String?
+  courseCompleted String
+  jobTitle        String
+  companyName     String
+  companyLogoUrl  String?
+  packageLPA      String?
+  placementYear   Int
+  testimonial     String
+  featured        Boolean  @default(false)
+  published       Boolean  @default(true)
+  displayOrder    Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([published, featured, displayOrder])
+}
+
+model FeeRecord {
+  id             String         @id @default(uuid())
+  studentId      String
+  courseId       String
+  batchId        String
+  totalFee       Float
+  paidAmount     Float          @default(0.0)
+  balanceAmount  Float          @default(0.0)
+  dueDate        DateTime?
+  paymentStatus  PaymentStatus  @default(PENDING)
+  notes          String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  discountAmount Float          @default(0.0)
+  originalFee    Float          @default(0.0)
+  payments       FeePayment[]
+  batch          Batch          @relation(fields: [batchId], references: [id])
+  course         Course         @relation(fields: [courseId], references: [id])
+  student        StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+  @@index([paymentStatus])
+}
+
+model FeePayment {
+  id             String    @id @default(uuid())
+  feeRecordId    String
+  amount         Float
+  paymentMethod  String    @default("UPI")
+  transactionRef String?
+  receiptNumber  String?
+  remarks        String?
+  paidAt         DateTime  @default(now())
+  recordedById   String?
+  createdAt      DateTime  @default(now())
+  feeRecord      FeeRecord @relation(fields: [feeRecordId], references: [id], onDelete: Cascade)
+  recordedBy     User?     @relation("PaymentRecordedBy", fields: [recordedById], references: [id])
+
+  @@index([feeRecordId])
+  @@index([paidAt])
+}
+
+model MockInterview {
+  id            String       @id @default(uuid())
+  title         String?
+  date          DateTime
+  courseId      String
+  batchId       String?
+  totalMarks    Float        @default(35.0)
+  description   String?
+  conductedById String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  batch         Batch?       @relation(fields: [batchId], references: [id])
+  conductedBy   User?        @relation("MockInterviewConductedBy", fields: [conductedById], references: [id])
+  course        Course       @relation(fields: [courseId], references: [id])
+  results       MockResult[]
+
+  @@index([courseId, date])
+  @@index([date])
+}
+
+model MockResult {
+  id              String         @id @default(uuid())
+  mockInterviewId String
+  studentId       String
+  marksObtained   Float
+  percentage      Float?
+  feedback        String?
+  status          ResultStatus   @default(PUBLISHED)
+  enteredById     String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  enteredBy       User?          @relation("MockResultEnteredBy", fields: [enteredById], references: [id])
+  mockInterview   MockInterview  @relation(fields: [mockInterviewId], references: [id], onDelete: Cascade)
+  student         StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([mockInterviewId, studentId])
+  @@index([studentId])
+  @@index([mockInterviewId, status])
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revoked])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  action    String
+  entity    String
+  entityId  String?
+  details   Json?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id])
+
+  @@index([entity, entityId])
+  @@index([action, createdAt])
+}
+
 enum Role {
   ADMIN
   TEACHER
@@ -73,446 +496,4 @@ enum JourneyStatus {
   ACTIVE
   PLACED
   DROPPED_OUT
-}
-
-model User {
-  id           String     @id @default(uuid())
-  email        String     @unique
-  passwordHash String
-  role         Role
-  status       UserStatus @default(ACTIVE)
-  firstName    String
-  lastName     String
-  phone        String?
-  avatarUrl    String?
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-
-  studentProfile StudentProfile?
-  teacherProfile TeacherProfile?
-  refreshTokens  RefreshToken[]
-  auditLogs      AuditLog[]
-
-  // Offline Exams created / published
-  createdExams   OfflineExam[] @relation("ExamCreatedBy")
-  publishedExams OfflineExam[] @relation("ExamPublishedBy")
-
-  // Marks entered / updated
-  enteredResults ExamResult[]        @relation("ResultEnteredBy")
-  updatedResults ExamResult[]        @relation("ResultUpdatedBy")
-  resultHistory  ExamResultHistory[] @relation("ResultHistoryChangedBy")
-
-  // Announcements created
-  announcements Announcement[] @relation("AnnouncementAuthor")
-
-  // Registrations reviewed
-  reviewedRequests RegistrationRequest[] @relation("RequestReviewer")
-
-  // Eligible emails added by admin
-  addedEligibleEmails EligibleStudentEmail[] @relation("AdminEligibleEmails")
-
-  // Fee payments recorded
-  recordedPayments FeePayment[] @relation("PaymentRecordedBy")
-
-  // Mock Interviews
-  conductedMockInterviews MockInterview[] @relation("MockInterviewConductedBy")
-  enteredMockResults      MockResult[]    @relation("MockResultEnteredBy")
-
-  @@index([email])
-  @@index([firstName])
-  @@index([lastName])
-  @@index([role, status])
-  @@index([phone])
-}
-
-model StudentProfile {
-  id               String           @id @default(uuid())
-  userId           String           @unique
-  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  enrollmentNumber String           @unique
-  rollNumber       String?
-  guardianName     String?
-  guardianPhone    String?
-  address          String?
-  joinedAt         DateTime         @default(now())
-  joiningDate      DateTime         @default(now())
-  journeyStatus    JourneyStatus    @default(ACTIVE)
-  exitDate         DateTime?
-  dropOutReason    String?
-  status           EnrollmentStatus @default(ACTIVE)
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
-
-  enrollments   Enrollment[]
-  examResults   ExamResult[]
-  mockResults   MockResult[]
-  feeRecords    FeeRecord[]
-  announcements Announcement[] @relation("IndividualStudentAnnouncements")
-
-  @@index([enrollmentNumber])
-  @@index([journeyStatus])
-  @@index([joiningDate])
-  @@index([rollNumber])
-}
-
-model TeacherProfile {
-  id             String   @id @default(uuid())
-  userId         String   @unique
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  employeeId     String   @unique
-  specialization String?
-  qualifications String?
-  bio            String?
-  joinedAt       DateTime @default(now())
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  assignments TeacherAssignment[]
-
-  @@index([employeeId])
-}
-
-model EligibleStudentEmail {
-  id              String   @id @default(uuid())
-  email           String   @unique
-  fullName        String
-  offlineRegNumber String?  @unique
-  phone           String?
-  courseHint      String?
-  isRegistered    Boolean  @default(false)
-  addedByAdminId  String?
-  addedByAdmin    User?    @relation("AdminEligibleEmails", fields: [addedByAdminId], references: [id], onDelete: SetNull)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  @@index([email])
-  @@index([isRegistered])
-}
-
-model RegistrationRequest {
-  id              String        @id @default(uuid())
-  email           String
-  fullName        String
-  phone           String?
-  role            Role          // STUDENT or TEACHER
-  passwordHash    String
-  verificationTokenHash String?
-  tokenExpiresAt  DateTime?
-  isEmailVerified Boolean       @default(false)
-  status          RequestStatus @default(PENDING)
-  reviewNote      String?
-  reviewerId      String?
-  reviewer        User?         @relation("RequestReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
-  reviewedAt      DateTime?
-  targetCourseId  String?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-
-  @@index([email])
-  @@index([status, role])
-}
-
-model Course {
-  id            String   @id @default(uuid())
-  title         String
-  slug          String   @unique
-  description   String
-  curriculum    Json?    // Detailed modules, topics, weeks
-  duration      String   // e.g. "6 Months", "16 Weeks"
-  advertisedFee Float    @default(0.0)
-  thumbnailUrl  String?
-  featured      Boolean  @default(false)
-  published     Boolean  @default(false)
-  displayOrder  Int      @default(0)
-  isArchived    Boolean  @default(false)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  batches       Batch[]
-  enrollments   Enrollment[]
-  offlineExams  OfflineExam[]
-  mockInterviews MockInterview[]
-  announcements Announcement[]
-  feeRecords    FeeRecord[]
-
-  @@index([slug])
-  @@index([published, featured])
-}
-
-model Batch {
-  id          String      @id @default(uuid())
-  name        String      // e.g. "Batch 2026-A: Full Stack"
-  batchCode   String      @unique
-  courseId    String
-  course      Course      @relation(fields: [courseId], references: [id], onDelete: Restrict)
-  startDate   DateTime
-  endDate     DateTime?
-  timing      String?     // e.g. "Mon-Fri 10:00 AM - 1:00 PM"
-  capacity    Int         @default(30)
-  status      BatchStatus @default(UPCOMING)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-
-  teachers      TeacherAssignment[]
-  enrollments   Enrollment[]
-  offlineExams  OfflineExam[]
-  mockInterviews MockInterview[]
-  announcements Announcement[]
-  feeRecords    FeeRecord[]
-
-  @@index([batchCode])
-  @@index([courseId, status])
-}
-
-model TeacherAssignment {
-  id        String         @id @default(uuid())
-  teacherId String
-  teacher   TeacherProfile @relation(fields: [teacherId], references: [id], onDelete: Cascade)
-  batchId   String
-  batch     Batch          @relation(fields: [batchId], references: [id], onDelete: Cascade)
-  roleTitle String?        @default("Primary Instructor") // Lead Instructor, Mentor, Lab Assistant
-  assignedAt DateTime       @default(now())
-
-  @@unique([teacherId, batchId])
-  @@index([teacherId])
-  @@index([batchId])
-}
-
-model Enrollment {
-  id          String           @id @default(uuid())
-  studentId   String
-  student     StudentProfile   @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  batchId     String
-  batch       Batch            @relation(fields: [batchId], references: [id], onDelete: Restrict)
-  courseId    String
-  course      Course           @relation(fields: [courseId], references: [id], onDelete: Restrict)
-  enrolledAt  DateTime         @default(now())
-  status      EnrollmentStatus @default(ACTIVE)
-  notes       String?
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
-
-  @@unique([studentId, batchId])
-  @@index([studentId])
-  @@index([batchId])
-  @@index([courseId])
-}
-
-model OfflineExam {
-  id            String      @id @default(uuid())
-  title         String      // e.g. "DSA Mid-Term Examination"
-  subject       String      // e.g. "Data Structures & Algorithms"
-  courseId      String
-  course        Course      @relation(fields: [courseId], references: [id], onDelete: Restrict)
-  batchId       String
-  batch         Batch       @relation(fields: [batchId], references: [id], onDelete: Restrict)
-  examDate      DateTime
-  maxMarks      Float
-  description   String?
-  status        ExamStatus  @default(DRAFT)
-  createdById   String
-  createdBy     User        @relation("ExamCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
-  publishedById String?
-  publishedBy   User?       @relation("ExamPublishedBy", fields: [publishedById], references: [id], onDelete: SetNull)
-  publishedAt   DateTime?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-
-  results ExamResult[]
-
-  @@index([batchId, examDate])
-  @@index([status])
-}
-
-model ExamResult {
-  id            String       @id @default(uuid())
-  examId        String
-  exam          OfflineExam  @relation(fields: [examId], references: [id], onDelete: Cascade)
-  studentId     String
-  student       StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  marksObtained Float
-  percentage    Float?
-  remarks       String?
-  status        ResultStatus @default(DRAFT)
-  enteredById   String
-  enteredBy     User         @relation("ResultEnteredBy", fields: [enteredById], references: [id], onDelete: Restrict)
-  updatedById   String?
-  updatedBy     User?        @relation("ResultUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-
-  history ExamResultHistory[]
-
-  @@unique([examId, studentId])
-  @@index([studentId])
-  @@index([examId, status])
-}
-
-model ExamResultHistory {
-  id            String     @id @default(uuid())
-  resultId      String
-  result        ExamResult @relation(fields: [resultId], references: [id], onDelete: Cascade)
-  previousMarks Float
-  newMarks      Float
-  reason        String
-  changedById   String
-  changedBy     User       @relation("ResultHistoryChangedBy", fields: [changedById], references: [id], onDelete: Restrict)
-  changedAt     DateTime   @default(now())
-
-  @@index([resultId])
-}
-
-model Announcement {
-  id             String             @id @default(uuid())
-  title          String
-  body           String
-  authorId       String
-  author         User               @relation("AnnouncementAuthor", fields: [authorId], references: [id], onDelete: Restrict)
-  targetType     TargetAudienceType @default(ALL)
-  targetCourseId String?
-  targetCourse   Course?            @relation(fields: [targetCourseId], references: [id], onDelete: SetNull)
-  targetBatchId  String?
-  targetBatch    Batch?             @relation(fields: [targetBatchId], references: [id], onDelete: SetNull)
-  targetStudentId String?
-  targetStudent  StudentProfile?    @relation("IndividualStudentAnnouncements", fields: [targetStudentId], references: [id], onDelete: SetNull)
-  priority       PriorityLevel      @default(MEDIUM)
-  publishDate    DateTime           @default(now())
-  expiryDate     DateTime?
-  isPublished    Boolean            @default(true)
-  emailSent      Boolean            @default(false)
-  createdAt      DateTime           @default(now())
-  updatedAt      DateTime           @updatedAt
-
-  @@index([targetType, isPublished])
-  @@index([publishDate])
-}
-
-model StudentSuccessStory {
-  id             String   @id @default(uuid())
-  studentName    String
-  photoUrl       String?
-  courseCompleted String  // e.g. "Full Stack Cloud & DevOps"
-  jobTitle       String   // e.g. "Software Engineer II"
-  companyName    String   // e.g. "Google / Amazon"
-  companyLogoUrl String?
-  packageLPA     String?  // e.g. "18 LPA"
-  placementYear  Int      // e.g. 2025
-  testimonial    String
-  featured       Boolean  @default(false)
-  published      Boolean  @default(true)
-  displayOrder   Int      @default(0)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  @@index([published, featured, displayOrder])
-}
-
-model FeeRecord {
-  id            String        @id @default(uuid())
-  studentId     String
-  student       StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  courseId      String
-  course        Course        @relation(fields: [courseId], references: [id], onDelete: Restrict)
-  batchId       String
-  batch         Batch         @relation(fields: [batchId], references: [id], onDelete: Restrict)
-  totalFee      Float
-  paidAmount    Float         @default(0.0)
-  balanceAmount Float         @default(0.0)
-  dueDate       DateTime?
-  paymentStatus PaymentStatus @default(PENDING)
-  notes         String?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-
-  payments      FeePayment[]
-
-  @@index([studentId])
-  @@index([paymentStatus])
-}
-
-model FeePayment {
-  id             String      @id @default(uuid())
-  feeRecordId    String
-  feeRecord      FeeRecord   @relation(fields: [feeRecordId], references: [id], onDelete: Cascade)
-  amount         Float
-  paymentMethod  String      @default("UPI") // UPI, Cash, Bank Transfer, Cheque, Card
-  transactionRef String?
-  receiptNumber  String?
-  remarks        String?
-  paidAt         DateTime    @default(now())
-  recordedById   String?
-  recordedBy     User?       @relation("PaymentRecordedBy", fields: [recordedById], references: [id], onDelete: SetNull)
-  createdAt      DateTime    @default(now())
-
-  @@index([feeRecordId])
-  @@index([paidAt])
-}
-
-model MockInterview {
-  id            String        @id @default(uuid())
-  title         String?       // e.g. "Mock Interview - Full-Stack Architecture"
-  date          DateTime
-  courseId      String
-  course        Course        @relation(fields: [courseId], references: [id], onDelete: Restrict)
-  batchId       String?
-  batch         Batch?        @relation(fields: [batchId], references: [id], onDelete: SetNull)
-  totalMarks    Float         @default(35.0) // Every mock interview is out of 35 marks
-  description   String?
-  conductedById String?
-  conductedBy   User?         @relation("MockInterviewConductedBy", fields: [conductedById], references: [id], onDelete: SetNull)
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-
-  results       MockResult[]
-
-  @@index([courseId, date])
-  @@index([date])
-}
-
-model MockResult {
-  id              String        @id @default(uuid())
-  mockInterviewId String
-  mockInterview   MockInterview @relation(fields: [mockInterviewId], references: [id], onDelete: Cascade)
-  studentId       String
-  student         StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  marksObtained   Float         // Score out of 35
-  percentage      Float?        // Calculated percentage (marksObtained / 35.0 * 100)
-  feedback        String?
-  status          ResultStatus  @default(PUBLISHED)
-  enteredById     String?
-  enteredBy       User?         @relation("MockResultEnteredBy", fields: [enteredById], references: [id], onDelete: SetNull)
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-
-  @@unique([mockInterviewId, studentId])
-  @@index([studentId])
-  @@index([mockInterviewId, status])
-}
-
-model RefreshToken {
-  id        String   @id @default(uuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tokenHash String   @unique
-  expiresAt DateTime
-  revoked   Boolean  @default(false)
-  createdAt DateTime @default(now())
-
-  @@index([userId, revoked])
-}
-
-model AuditLog {
-  id        String   @id @default(uuid())
-  userId    String?
-  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  action    String   // e.g. "STUDENT_APPROVED", "MARKS_MODIFIED", "EXAM_PUBLISHED"
-  entity    String   // e.g. "RegistrationRequest", "ExamResult", "Course"
-  entityId  String?
-  details   Json?    // Sanitized change metadata, no passwords or tokens
-  ipAddress String?
-  userAgent String?
-  createdAt DateTime @default(now())
-
-  @@index([entity, entityId])
-  @@index([action, createdAt])
 }

@@ -302,7 +302,7 @@ class MockInterviewController {
         req,
       });
 
-      await invalidateCache(['mock_interviews']);
+      await invalidateCache(['mock_interviews', 'users']);
 
       return successResponse(res, {
         statusCode: 200,
@@ -376,7 +376,7 @@ class MockInterviewController {
         req,
       });
 
-      await invalidateCache(['mock_interviews']);
+      await invalidateCache(['mock_interviews', 'users']);
 
       return successResponse(res, { message: 'Mock interview deleted successfully' });
     } catch (error) {
