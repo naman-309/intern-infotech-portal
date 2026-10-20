@@ -29,12 +29,16 @@ const config = {
   /**
    * Dynamically resolves the frontend client URL from the request,
    * falling back to config.clientOrigin, guaranteed to have NO trailing slash.
+   * Never uses backend microservice ports (5000-5004) for frontend client links.
    */
   getClientOrigin(req) {
+    const defaultFrontend = (process.env.CLIENT_ORIGIN || 'http://localhost:5173').trim().replace(/\/+$/, '');
+    const backendPorts = [5000, 5001, 5002, 5003, 5004];
+
     let origin = '';
 
     if (req && typeof req.get === 'function') {
-      // 1. Origin header (sent by browsers on fetch/xhr POST requests)
+      // 1. Origin header (sent by browsers on fetch/xhr requests)
       origin = req.get('origin');
 
       // 2. Referer header (extract scheme + host)
@@ -45,18 +49,31 @@ const config = {
         } catch (_) {}
       }
 
-      // 3. X-Forwarded-Host or Host header (passed from reverse proxy like Nginx)
+      // 3. X-Forwarded-Host or Host header (only if from a front-facing reverse proxy)
       if (!origin) {
-        const host = req.get('x-forwarded-host') || req.get('host');
+        const host = req.get('x-forwarded-host');
         if (host) {
-          const proto = req.get('x-forwarded-proto') || req.protocol || 'http';
+          const proto = req.get('x-forwarded-proto') || 'https';
           origin = `${proto}://${host}`;
         }
       }
     }
 
+    // Safety check: If origin points to backend ports, reject and use defaultFrontend
+    if (origin) {
+      try {
+        const parsed = new URL(origin);
+        const port = parseInt(parsed.port, 10);
+        if (backendPorts.includes(port)) {
+          origin = defaultFrontend;
+        }
+      } catch (_) {
+        origin = defaultFrontend;
+      }
+    }
+
     if (!origin || origin.trim() === '') {
-      origin = process.env.CLIENT_ORIGIN || 'http://localhost:5173';
+      origin = defaultFrontend;
     }
 
     // Always strip trailing slashes to guarantee clean URL concatenation without double slash "//"

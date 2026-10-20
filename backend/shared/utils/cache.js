@@ -58,13 +58,14 @@ async function getCache(key) {
 }
 
 /**
- * Store JSON value in Redis with automatic TTL expiration (default 3 mins / 180s)
- * Keeps memory usage well within Upstash 250MB free tier.
+ * Store JSON value in Redis with automatic TTL expiration (strict 30-min / 1800s window).
+ * Lightweight serialization preserves memory usage well under the 250 MB Upstash limit.
  */
-async function setCache(key, value, ttlSeconds = 180) {
+async function setCache(key, value, ttlSeconds = 1800) {
   if (!isRedisAvailable || !cacheClient) return false;
   try {
-    const safeTtl = Math.max(10, Math.min(600, ttlSeconds));
+    // Strict 30-minute wipeout cap (1800s max)
+    const safeTtl = Math.max(10, Math.min(1800, ttlSeconds));
     const serialized = JSON.stringify(value);
     await cacheClient.set(key, serialized, 'EX', safeTtl);
     return true;
