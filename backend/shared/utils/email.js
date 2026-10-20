@@ -72,8 +72,20 @@ const baseTemplate = (title, contentHtml) => {
   `;
 };
 
+const sanitizeUrl = (url) => {
+  if (!url) return '';
+  try {
+    const parsed = new URL(url.trim());
+    parsed.pathname = parsed.pathname.replace(/\/+/g, '/');
+    return parsed.toString();
+  } catch (_) {
+    return url.trim().replace(/([^:])\/\/+/g, '$1/');
+  }
+};
+
 const sendVerificationEmail = async ({ to, fullName, verificationUrl }) => {
   const mailer = getTransporter();
+  const cleanUrl = sanitizeUrl(verificationUrl);
   const html = baseTemplate(
     'Verify Your Email Address',
     `
@@ -81,7 +93,11 @@ const sendVerificationEmail = async ({ to, fullName, verificationUrl }) => {
     <p>Thank you for submitting your admission registration request with the <strong>Intern Infotech Engineering Academy</strong>.</p>
     <p>To confirm that you have access to this email address and allow our academic admissions committee to review your offline registration, please verify your email by clicking the button below:</p>
     <div style="text-align: center;">
-      <a href="${verificationUrl}" class="btn">Verify Email Address</a>
+      <a href="${cleanUrl}" class="btn">Verify Email Address</a>
+    </div>
+    <div style="margin-top: 15px; padding: 12px; background-color: #0f172a; border-radius: 6px; border: 1px solid #334155;">
+      <p style="margin: 0 0 6px 0; font-size: 12px; color: #94a3b8;">If the button above does not work, copy and paste this link into your browser:</p>
+      <a href="${cleanUrl}" style="color: #38bdf8; font-size: 13px; word-break: break-all;">${cleanUrl}</a>
     </div>
     <div class="alert-box">
       <strong>Note:</strong> This verification link will expire in 24 hours. Verifying your email confirms ownership; your account will become active once an administrator or assigned teacher approves your offline admission enrollment.
@@ -100,6 +116,7 @@ const sendVerificationEmail = async ({ to, fullName, verificationUrl }) => {
 
 const sendApprovalEmail = async ({ to, fullName, role, loginUrl }) => {
   const mailer = getTransporter();
+  const cleanUrl = sanitizeUrl(loginUrl);
   const html = baseTemplate(
     'Registration Approved',
     `
@@ -107,7 +124,11 @@ const sendApprovalEmail = async ({ to, fullName, role, loginUrl }) => {
     <p>We are pleased to inform you that your registration request as a <strong>${role}</strong> at <strong>Intern Infotech Engineering Academy</strong> has been officially approved!</p>
     <p>Your portal account is now active. You can log in using your registered email and the password you set during registration.</p>
     <div style="text-align: center;">
-      <a href="${loginUrl}" class="btn">Access Portal Dashboard</a>
+      <a href="${cleanUrl}" class="btn">Access Portal Dashboard</a>
+    </div>
+    <div style="margin-top: 15px; padding: 12px; background-color: #0f172a; border-radius: 6px; border: 1px solid #334155;">
+      <p style="margin: 0 0 6px 0; font-size: 12px; color: #94a3b8;">Portal link:</p>
+      <a href="${cleanUrl}" style="color: #38bdf8; font-size: 13px; word-break: break-all;">${cleanUrl}</a>
     </div>
     <p>Once logged in, you can view your assigned courses, batch details, announcements, and academic performance.</p>
     <p>Welcome to our software engineering community!</p>
@@ -145,6 +166,7 @@ const sendRejectionEmail = async ({ to, fullName, role, reviewNote }) => {
 
 const sendPasswordResetEmail = async ({ to, fullName, resetUrl }) => {
   const mailer = getTransporter();
+  const cleanUrl = sanitizeUrl(resetUrl);
   const html = baseTemplate(
     'Password Reset Request',
     `
@@ -153,7 +175,11 @@ const sendPasswordResetEmail = async ({ to, fullName, resetUrl }) => {
     <p>We received a request to reset your password for your Intern Infotech Academy account.</p>
     <p>Click the link below to set a new password. This link will expire in 1 hour.</p>
     <div style="text-align: center;">
-      <a href="${resetUrl}" class="btn">Reset Password</a>
+      <a href="${cleanUrl}" class="btn">Reset Password</a>
+    </div>
+    <div style="margin-top: 15px; padding: 12px; background-color: #0f172a; border-radius: 6px; border: 1px solid #334155;">
+      <p style="margin: 0 0 6px 0; font-size: 12px; color: #94a3b8;">If the button above does not work, copy and paste this link into your browser:</p>
+      <a href="${cleanUrl}" style="color: #38bdf8; font-size: 13px; word-break: break-all;">${cleanUrl}</a>
     </div>
     <div class="alert-box">
       If you did not request this password reset, please ignore this email or contact academy security. Your password will remain unchanged.
@@ -255,7 +281,7 @@ const sendAnnouncementEmail = async (payload) => {
   const body = payload.body || '';
   const priority = (payload.priority || 'MEDIUM').toUpperCase();
   const authorName = payload.authorName || 'Academy Administration';
-  const portalUrl = payload.portalUrl || `${config.clientOrigin}/student/announcements`;
+  const portalUrl = sanitizeUrl(payload.portalUrl || `${config.clientOrigin}/student/announcements`);
 
   if (!to) {
     console.error('[sendAnnouncementEmail] Missing recipient email address. Payload received:', payload);

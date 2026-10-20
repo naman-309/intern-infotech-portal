@@ -36,11 +36,14 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    // Skip refresh attempt for auth endpoints (login, register, or refresh itself)
+    // Skip refresh attempt for public auth endpoints (login, register, forgot/reset password, or refresh itself)
     const isAuthEndpoint =
       originalRequest?.url?.includes('/auth/login') ||
       originalRequest?.url?.includes('/auth/refresh') ||
-      originalRequest?.url?.includes('/auth/register');
+      originalRequest?.url?.includes('/auth/register') ||
+      originalRequest?.url?.includes('/auth/forgot-password') ||
+      originalRequest?.url?.includes('/auth/reset-password') ||
+      originalRequest?.url?.includes('/auth/verify-email');
 
     if (error.response.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
       if (isRefreshing) {

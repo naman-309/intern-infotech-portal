@@ -213,7 +213,8 @@ class AnnouncementController {
 
             let queuedCount = 0;
             const authorName = `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim() || 'Academy Administration';
-            const portalUrl = `${config.clientOrigin}/student/announcements`;
+            const clientOrigin = config.getClientOrigin ? config.getClientOrigin(req) : config.clientOrigin;
+            const portalUrl = `${clientOrigin}/student/announcements`;
 
             for (const r of recipients) {
               if (r.email) {

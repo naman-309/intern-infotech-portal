@@ -7,6 +7,7 @@ const { config, errorHandler } = require('@portal/shared');
 const authRoutes = require('./routes/authRoutes');
 
 const app = express();
+app.set('trust proxy', 1);
 
 // Security and middleware
 app.use(helmet());

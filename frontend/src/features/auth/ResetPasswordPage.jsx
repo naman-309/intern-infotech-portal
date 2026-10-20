@@ -72,31 +72,45 @@ export const ResetPasswordPage = () => {
               </div>
             )}
 
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">New Password</label>
-                <Input
-                  type="password"
-                  placeholder="Min 8 characters"
-                  error={errors.newPassword?.message}
-                  {...register('newPassword')}
-                />
+            {!token ? (
+              <div className="text-center space-y-4 py-2">
+                <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-start gap-2.5 text-xs text-amber-300 text-left">
+                  <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                  <span>Missing password reset token in this URL. Please open the reset link directly from the email sent to your inbox.</span>
+                </div>
+                <Link to="/forgot-password">
+                  <Button variant="outline" className="w-full mt-2">
+                    Request New Reset Link
+                  </Button>
+                </Link>
               </div>
+            ) : (
+              <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-300 mb-1">New Password</label>
+                  <Input
+                    type="password"
+                    placeholder="Min 8 characters"
+                    error={errors.newPassword?.message}
+                    {...register('newPassword')}
+                  />
+                </div>
 
-              <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">Confirm New Password</label>
-                <Input
-                  type="password"
-                  placeholder="Confirm password"
-                  error={errors.confirmPassword?.message}
-                  {...register('confirmPassword')}
-                />
-              </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-300 mb-1">Confirm New Password</label>
+                  <Input
+                    type="password"
+                    placeholder="Confirm password"
+                    error={errors.confirmPassword?.message}
+                    {...register('confirmPassword')}
+                  />
+                </div>
 
-              <Button type="submit" isLoading={isSubmitting} className="w-full gap-2">
-                Update Password & Return to Login
-              </Button>
-            </form>
+                <Button type="submit" isLoading={isSubmitting} className="w-full gap-2">
+                  Update Password & Return to Login
+                </Button>
+              </form>
+            )}
           </CardContent>
         </Card>
       </div>

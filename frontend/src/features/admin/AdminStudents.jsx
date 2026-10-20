@@ -33,7 +33,7 @@ export const AdminStudents = () => {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [journeyFilter, setJourneyFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  
+
   // Student 360 View modal state
   const [selectedStudentId, setSelectedStudentId] = useState(null);
   const [is360ModalOpen, setIs360ModalOpen] = useState(false);
@@ -164,41 +164,37 @@ export const AdminStudents = () => {
           </span>
           <button
             onClick={() => setJourneyFilter('')}
-            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-              journeyFilter === ''
+            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${journeyFilter === ''
                 ? 'bg-indigo-600 text-white font-semibold'
                 : 'bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800'
-            }`}
+              }`}
           >
             All Students ({students.length})
           </button>
           <button
             onClick={() => setJourneyFilter('ACTIVE')}
-            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-              journeyFilter === 'ACTIVE'
+            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${journeyFilter === 'ACTIVE'
                 ? 'bg-emerald-600 text-white font-semibold'
                 : 'bg-slate-950 text-emerald-400 hover:bg-emerald-950/30 border border-slate-800'
-            }`}
+              }`}
           >
             Active Students
           </button>
           <button
             onClick={() => setJourneyFilter('PLACED')}
-            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-              journeyFilter === 'PLACED'
+            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${journeyFilter === 'PLACED'
                 ? 'bg-sky-600 text-white font-semibold'
                 : 'bg-slate-950 text-sky-400 hover:bg-sky-950/30 border border-slate-800'
-            }`}
+              }`}
           >
             Placed / Worked
           </button>
           <button
             onClick={() => setJourneyFilter('DROPPED_OUT')}
-            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-              journeyFilter === 'DROPPED_OUT'
+            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${journeyFilter === 'DROPPED_OUT'
                 ? 'bg-rose-600 text-white font-semibold'
                 : 'bg-slate-950 text-rose-400 hover:bg-rose-950/30 border border-slate-800'
-            }`}
+              }`}
           >
             Dropped Out
           </button>

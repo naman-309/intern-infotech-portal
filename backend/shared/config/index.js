@@ -23,14 +23,55 @@ const config = {
     notification: process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:5004',
   },
 
-  clientOrigin: process.env.CLIENT_ORIGIN || 'http://localhost:5173',
-  publicApiUrl: process.env.PUBLIC_API_URL || 'http://localhost:5000/api/v1',
+  clientOrigin: (process.env.CLIENT_ORIGIN || 'http://localhost:5173').trim().replace(/\/+$/, ''),
+  publicApiUrl: (process.env.PUBLIC_API_URL || 'http://localhost:5000/api/v1').trim().replace(/\/+$/, ''),
+
+  /**
+   * Dynamically resolves the frontend client URL from the request,
+   * falling back to config.clientOrigin, guaranteed to have NO trailing slash.
+   */
+  getClientOrigin(req) {
+    let origin = '';
+
+    if (req && typeof req.get === 'function') {
+      // 1. Origin header (sent by browsers on fetch/xhr POST requests)
+      origin = req.get('origin');
+
+      // 2. Referer header (extract scheme + host)
+      if (!origin && req.get('referer')) {
+        try {
+          const parsed = new URL(req.get('referer'));
+          origin = parsed.origin;
+        } catch (_) {}
+      }
+
+      // 3. X-Forwarded-Host or Host header (passed from reverse proxy like Nginx)
+      if (!origin) {
+        const host = req.get('x-forwarded-host') || req.get('host');
+        if (host) {
+          const proto = req.get('x-forwarded-proto') || req.protocol || 'http';
+          origin = `${proto}://${host}`;
+        }
+      }
+    }
+
+    if (!origin || origin.trim() === '') {
+      origin = process.env.CLIENT_ORIGIN || 'http://localhost:5173';
+    }
+
+    // Always strip trailing slashes to guarantee clean URL concatenation without double slash "//"
+    return origin.trim().replace(/\/+$/, '');
+  },
 
   jwt: {
     accessSecret: process.env.JWT_ACCESS_SECRET || 'dev_jwt_access_secret_key_needs_replacement_in_prod_min_32_chars',
     refreshSecret: process.env.JWT_REFRESH_SECRET || 'dev_jwt_refresh_secret_key_needs_replacement_in_prod_min_32_chars',
-    verifySecret: process.env.JWT_VERIFY_SECRET || 'dev_jwt_verify_secret_key_needs_replacement_in_prod_min_32_chars',
-    resetSecret: process.env.JWT_RESET_SECRET || 'dev_jwt_reset_secret_key_needs_replacement_in_prod_min_32_chars',
+    verifySecret: (process.env.JWT_VERIFY_SECRET && process.env.JWT_VERIFY_SECRET.trim() !== '')
+      ? process.env.JWT_VERIFY_SECRET.trim()
+      : (process.env.JWT_ACCESS_SECRET || 'dev_jwt_verify_secret_key_needs_replacement_in_prod_min_32_chars'),
+    resetSecret: (process.env.JWT_RESET_SECRET && process.env.JWT_RESET_SECRET.trim() !== '')
+      ? process.env.JWT_RESET_SECRET.trim()
+      : (process.env.JWT_ACCESS_SECRET || 'dev_jwt_reset_secret_key_needs_replacement_in_prod_min_32_chars'),
     accessExpiry: process.env.JWT_ACCESS_EXPIRY || '15m',
     refreshExpiry: process.env.JWT_REFRESH_EXPIRY || '7d',
   },

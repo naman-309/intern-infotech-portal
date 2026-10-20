@@ -11,6 +11,7 @@ const eligibleEmailRoutes = require('./routes/eligibleEmailRoutes');
 const auditLogRoutes = require('./routes/auditLogRoutes');
 
 const app = express();
+app.set('trust proxy', 1);
 
 app.use(helmet());
 app.use(morgan(config.isProduction ? 'combined' : 'dev'));

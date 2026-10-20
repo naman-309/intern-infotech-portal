@@ -234,7 +234,8 @@ class RegistrationController {
         });
 
         // Queue Approval Email
-        const loginUrl = `${config.clientOrigin}/login`;
+        const clientOrigin = config.getClientOrigin ? config.getClientOrigin(req) : config.clientOrigin;
+        const loginUrl = `${clientOrigin}/login`;
         await queueEmail('APPROVAL', {
           to: request.email,
           fullName: request.fullName,
@@ -295,7 +296,8 @@ class RegistrationController {
           });
         });
 
-        const loginUrl = `${config.clientOrigin}/login`;
+        const clientOrigin = config.getClientOrigin ? config.getClientOrigin(req) : config.clientOrigin;
+        const loginUrl = `${clientOrigin}/login`;
         await queueEmail('APPROVAL', {
           to: request.email,
           fullName: request.fullName,

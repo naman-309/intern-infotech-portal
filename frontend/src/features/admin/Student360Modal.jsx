@@ -34,7 +34,7 @@ import { toast } from 'sonner';
 export const Student360Modal = ({ isOpen, onClose, studentId, onStudentUpdated }) => {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'fees' | 'academics' | 'edit'
-  
+
   // Journey status update form state
   const [journeyForm, setJourneyForm] = useState({
     journeyStatus: 'ACTIVE',
@@ -230,9 +230,8 @@ export const Student360Modal = ({ isOpen, onClose, studentId, onStudentUpdated }
                   </div>
                 )}
                 <span
-                  className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-slate-900 ${
-                    student.status === 'ACTIVE' ? 'bg-emerald-500' : 'bg-rose-500'
-                  }`}
+                  className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-slate-900 ${student.status === 'ACTIVE' ? 'bg-emerald-500' : 'bg-rose-500'
+                    }`}
                   title={`Account: ${student.status}`}
                 />
               </div>
@@ -347,41 +346,37 @@ export const Student360Modal = ({ isOpen, onClose, studentId, onStudentUpdated }
           <div className="flex items-center gap-1 border-b border-slate-800 pb-2 overflow-x-auto text-xs">
             <button
               onClick={() => setActiveTab('overview')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-1.5 ${
-                activeTab === 'overview'
+              className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-1.5 ${activeTab === 'overview'
                   ? 'bg-slate-800 text-white font-semibold shadow-sm'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-              }`}
+                }`}
             >
               <User className="w-3.5 h-3.5" /> 360° Profile & Journey
             </button>
             <button
               onClick={() => setActiveTab('fees')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-1.5 ${
-                activeTab === 'fees'
+              className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-1.5 ${activeTab === 'fees'
                   ? 'bg-slate-800 text-white font-semibold shadow-sm'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-              }`}
+                }`}
             >
               <Receipt className="w-3.5 h-3.5" /> Fee Ledger ({allPayments.length} Logs)
             </button>
             <button
               onClick={() => setActiveTab('academics')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-1.5 ${
-                activeTab === 'academics'
+              className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-1.5 ${activeTab === 'academics'
                   ? 'bg-slate-800 text-white font-semibold shadow-sm'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-              }`}
+                }`}
             >
               <Award className="w-3.5 h-3.5" /> Mock Interviews ({totalMocks})
             </button>
             <button
               onClick={() => setActiveTab('edit')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-1.5 ${
-                activeTab === 'edit'
+              className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-1.5 ${activeTab === 'edit'
                   ? 'bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 font-semibold'
                   : 'text-slate-400 hover:text-indigo-300 hover:bg-slate-800/50'
-              }`}
+                }`}
             >
               <Edit className="w-3.5 h-3.5" /> Edit Profile
             </button>
@@ -650,8 +645,8 @@ export const Student360Modal = ({ isOpen, onClose, studentId, onStudentUpdated }
                               fee.paymentStatus === 'PAID'
                                 ? 'success'
                                 : fee.paymentStatus === 'PARTIAL'
-                                ? 'warning'
-                                : 'danger'
+                                  ? 'warning'
+                                  : 'danger'
                             }
                           >
                             {fee.paymentStatus}
@@ -780,8 +775,8 @@ export const Student360Modal = ({ isOpen, onClose, studentId, onStudentUpdated }
                                   result.percentage >= 75
                                     ? 'success'
                                     : result.percentage >= 50
-                                    ? 'primary'
-                                    : 'warning'
+                                      ? 'primary'
+                                      : 'warning'
                                 }
                               >
                                 {result.percentage}%

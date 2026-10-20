@@ -15,6 +15,7 @@ const publicRoutes = require('./routes/publicRoutes');
 const mockInterviewRoutes = require('./routes/mockInterviewRoutes');
 
 const app = express();
+app.set('trust proxy', 1);
 
 app.use(helmet());
 app.use(morgan(config.isProduction ? 'combined' : 'dev'));

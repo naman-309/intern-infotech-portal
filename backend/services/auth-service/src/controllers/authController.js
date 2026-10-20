@@ -408,7 +408,8 @@ class AuthController {
       });
 
       // 7. Queue email verification
-      const verificationUrl = `${config.clientOrigin}/verify-email?token=${verificationToken}`;
+      const clientOrigin = config.getClientOrigin ? config.getClientOrigin(req) : config.clientOrigin;
+      const verificationUrl = `${clientOrigin}/verify-email?token=${verificationToken}`;
       await queueEmail('VERIFICATION', {
         to: normalizedEmail,
         fullName,
@@ -494,7 +495,8 @@ class AuthController {
         },
       });
 
-      const verificationUrl = `${config.clientOrigin}/verify-email?token=${verificationToken}`;
+      const clientOrigin = config.getClientOrigin ? config.getClientOrigin(req) : config.clientOrigin;
+      const verificationUrl = `${clientOrigin}/verify-email?token=${verificationToken}`;
       await queueEmail('VERIFICATION', {
         to: normalizedEmail,
         fullName,
@@ -619,7 +621,8 @@ class AuthController {
       }
 
       const resetToken = generateResetToken({ userId: user.id, email: user.email });
-      const resetUrl = `${config.clientOrigin}/reset-password?token=${resetToken}`;
+      const clientOrigin = config.getClientOrigin ? config.getClientOrigin(req) : config.clientOrigin;
+      const resetUrl = `${clientOrigin}/reset-password?token=${resetToken}`;
 
       await queueEmail('PASSWORD_RESET', {
         to: user.email,
