@@ -43,13 +43,39 @@ router.put('/students/:id', authenticate, requireRole('ADMIN'), userController.u
 router.patch('/students/:id/journey-status', authenticate, requireRole('ADMIN'), userController.updateStudentJourneyStatus);
 
 
-// Teachers (cached for 30 minutes in Redis with automatic invalidation)
+// Teachers
+// Public: Directory of active faculty visible on the landing page (cached in Redis)
+router.get(
+  '/teachers/public',
+  cacheMiddleware({ prefix: 'teachers_public', ttl: 1800 }),
+  userController.getPublicTeachers
+);
+
+// Admin: Faculty Management
 router.get(
   '/teachers',
   authenticate,
   requireRole('ADMIN'),
   cacheMiddleware({ prefix: 'users', ttl: 1800 }),
   userController.getTeachers
+);
+router.post(
+  '/teachers',
+  authenticate,
+  requireRole('ADMIN'),
+  userController.createTeacher
+);
+router.put(
+  '/teachers/:id',
+  authenticate,
+  requireRole('ADMIN'),
+  userController.updateTeacher
+);
+router.patch(
+  '/teachers/:id/visibility',
+  authenticate,
+  requireRole('ADMIN'),
+  userController.toggleTeacherVisibility
 );
 
 // User status lifecycle (Active / Inactive / Suspended)

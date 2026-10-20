@@ -22,9 +22,17 @@ import {
 
 export const StudentDashboard = () => {
   const { user } = useAuth();
-  const studentProfile = user?.studentProfile;
 
-  // Consolidated parallel data fetching with Promise.all() to eliminate waterfalls
+  const { data: meData } = useQuery({
+    queryKey: ['studentProfileMe', user?.id],
+    queryFn: () => api.get('/auth/me'),
+    staleTime: 60000,
+  });
+
+  const freshUser = meData?.data?.user || user;
+  const studentProfile = freshUser?.studentProfile || user?.studentProfile;
+  const enrollments = studentProfile?.enrollments || [];
+
   const { data: dashboardData, isLoading } = useQuery({
     queryKey: ['studentDashboard', user?.id],
     queryFn: async () => {
@@ -40,11 +48,10 @@ export const StudentDashboard = () => {
         fees: feesRes?.data?.data || feesRes?.data || {},
       };
     },
-    staleTime: 1200000, // 20 minutes (leverages Upstash Redis caching)
+    staleTime: 60000,
     refetchOnWindowFocus: false,
   });
 
-  const enrollments = studentProfile?.enrollments || [];
   const recentTests = dashboardData?.progress?.recentTests || [];
   const progressSummary = dashboardData?.progress?.summary || { totalTests: 0, averageScore: 0, averagePercentage: 0 };
   const announcements = dashboardData?.announcements || [];
@@ -52,20 +59,43 @@ export const StudentDashboard = () => {
 
   return (
     <div className="space-y-8">
-      {/* Welcome Banner */}
-      <div className="p-6 md:p-8 rounded-2xl bg-gradient-to-r from-indigo-950 via-slate-900 to-slate-900 border border-indigo-500/20 shadow-xl relative overflow-hidden">
-        <div className="relative z-10 max-w-2xl space-y-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-mono">
-            <span>Roll #{studentProfile?.rollNumber || 'N/A'}</span>
-            <span>•</span>
-            <span>Enrollment ID: {studentProfile?.enrollmentNumber || 'N/A'}</span>
+      {/* Welcome Banner with dev@nkkr Flex & Operating Hours */}
+      <div className="p-6 md:p-8 rounded-3xl bg-gradient-to-r from-slate-900 via-sky-950/40 to-slate-900 border border-sky-500/30 shadow-2xl relative overflow-hidden">
+        <div className="absolute right-0 top-0 w-80 h-80 bg-sky-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="max-w-2xl space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="px-3 py-1 rounded-full bg-sky-500/20 text-sky-300 text-xs font-mono font-medium border border-sky-500/30">
+                Roll #{studentProfile?.rollNumber || 'R-1001'}
+              </span>
+              <span className="px-3 py-1 rounded-full bg-slate-900 text-slate-400 text-xs font-mono border border-slate-800">
+                Enrollment ID: {studentProfile?.enrollmentNumber || 'IIT-2026-S1001'}
+              </span>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-mono border border-emerald-500/30">
+                <Clock className="w-3.5 h-3.5" />
+                <span>Lab Hours: <strong>7:00 AM – 7:00 PM</strong></span>
+              </div>
+            </div>
+
+            <h1 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight">
+              Welcome back, <span className="text-sky-400">{user?.firstName}!</span>
+            </h1>
+
+            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-light">
+              Track your offline laboratory examination marks, view batch announcements, and monitor your academic progress in real time.
+            </p>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-            Welcome back, {user?.firstName}!
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-            Track your offline laboratory examination marks, view batch announcements, and monitor your academic progress in real time.
-          </p>
+
+          <div className="flex flex-col items-start md:items-end gap-2 shrink-0">
+            <div className="px-3.5 py-2 rounded-2xl bg-slate-950/80 border border-slate-800 flex items-center gap-3">
+              <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
+              <div className="text-right">
+                <div className="text-[10px] text-slate-500 font-mono uppercase">Enrolled Programs</div>
+                <div className="text-xs font-bold text-sky-300 font-mono">{enrollments.length} Active Cohorts</div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

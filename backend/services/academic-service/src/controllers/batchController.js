@@ -26,6 +26,7 @@ const assignTeacherSchema = z.object({
 
 const enrollStudentSchema = z.object({
   studentId: z.string().uuid(),
+  discountAmount: z.number().min(0, 'Discount amount cannot be negative').optional().default(0),
 });
 
 class BatchController {
@@ -328,7 +329,7 @@ class BatchController {
   async enrollStudent(req, res, next) {
     try {
       const { id: batchId } = req.params;
-      const { studentId } = enrollStudentSchema.parse(req.body);
+      const { studentId, discountAmount = 0 } = enrollStudentSchema.parse(req.body);
 
       const batch = await prisma.batch.findUnique({
         where: { id: batchId },
@@ -338,9 +339,38 @@ class BatchController {
         return errorResponse(res, { statusCode: 404, message: 'Batch not found' });
       }
 
+      // Resolve StudentProfile ID (supports both StudentProfile.id and User.id)
+      let resolvedStudentId = studentId;
+      const studentProfile = await prisma.studentProfile.findFirst({
+        where: {
+          OR: [{ id: studentId }, { userId: studentId }],
+        },
+      });
+      if (studentProfile) {
+        resolvedStudentId = studentProfile.id;
+      } else {
+        return errorResponse(res, { statusCode: 404, message: 'Student profile not found' });
+      }
+
+      // Prevent duplicate active enrollments in the same course
+      const existingActiveCourseEnrollment = await prisma.enrollment.findFirst({
+        where: {
+          studentId: resolvedStudentId,
+          courseId: batch.courseId,
+          status: 'ACTIVE',
+        },
+        include: { batch: true },
+      });
+      if (existingActiveCourseEnrollment) {
+        return errorResponse(res, {
+          statusCode: 409,
+          message: `Student is already actively enrolled in this course (${batch.course.title}) under batch "${existingActiveCourseEnrollment.batch?.name || existingActiveCourseEnrollment.batchId}".`,
+        });
+      }
+
       const enrollment = await prisma.enrollment.create({
         data: {
-          studentId,
+          studentId: resolvedStudentId,
           batchId,
           courseId: batch.courseId,
           status: 'ACTIVE',
@@ -349,11 +379,11 @@ class BatchController {
 
       // Automatically set joiningDate and journeyStatus on student profile if first course enrollment
       const totalEnrollments = await prisma.enrollment.count({
-        where: { studentId },
+        where: { studentId: resolvedStudentId },
       });
       if (totalEnrollments === 1) {
         await prisma.studentProfile.update({
-          where: { id: studentId },
+          where: { id: resolvedStudentId },
           data: {
             joiningDate: new Date(),
             journeyStatus: 'ACTIVE',
@@ -363,22 +393,33 @@ class BatchController {
         });
       }
 
-      // Create fee record if not already present
+      // Calculate fee with individual enrollment discount
+      // Final payable amount = Original course fee - Discount amount
+      const originalFee = Number(batch.course.advertisedFee || 0);
+      const discount = Math.min(originalFee, Math.max(0, Number(discountAmount || 0)));
+      const finalPayable = Math.max(0, originalFee - discount);
+
+      // Create fee record linked to this enrollment if not already present
+      let createdFeeRecord = null;
       const existingFee = await prisma.feeRecord.findFirst({
-        where: { studentId, batchId },
+        where: { studentId: resolvedStudentId, batchId, courseId: batch.courseId },
       });
-      if (!existingFee && batch.course.advertisedFee > 0) {
-        await prisma.feeRecord.create({
+      if (!existingFee && originalFee > 0) {
+        createdFeeRecord = await prisma.feeRecord.create({
           data: {
-            studentId,
+            studentId: resolvedStudentId,
             courseId: batch.courseId,
             batchId: batch.id,
-            totalFee: batch.course.advertisedFee,
-            paidAmount: 0,
-            balanceAmount: batch.course.advertisedFee,
-            paymentStatus: 'PENDING',
+            originalFee,
+            discountAmount: discount,
+            totalFee: finalPayable,
+            paidAmount: 0.0,
+            balanceAmount: finalPayable,
+            paymentStatus: finalPayable === 0 ? 'PAID' : 'PENDING',
           },
         });
+      } else {
+        createdFeeRecord = existingFee;
       }
 
       await logAudit({
@@ -386,16 +427,17 @@ class BatchController {
         action: 'STUDENT_ENROLLED_IN_BATCH',
         entity: 'Batch',
         entityId: batchId,
-        details: { studentId, courseId: batch.courseId },
+        details: { studentId: resolvedStudentId, courseId: batch.courseId, originalFee, discountAmount: discount, finalPayable },
         req,
       });
 
-      await invalidateCache(['batches', 'fees']);
+      // Invalidate batches, fees, and users so student dashboard and course list update immediately
+      await invalidateCache(['batches', 'fees', 'users']);
 
       return successResponse(res, {
         statusCode: 201,
-        message: 'Student enrolled successfully',
-        data: { enrollment },
+        message: 'Student enrolled in course successfully',
+        data: { enrollment, feeConfig: { originalFee, discountAmount: discount, finalPayable }, feeRecord: createdFeeRecord },
       });
     } catch (error) {
       next(error);

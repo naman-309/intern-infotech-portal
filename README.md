@@ -1,264 +1,171 @@
 # Intern Infotech — Software Engineering Coaching Institute Portal
 
-A full-stack, enterprise-grade educational platform built for an elite offline technical coaching institute. The system powers in-person admissions verification, supervised offline examination grading, batch rostering, targeted notifications, advertised tuition tracking, and a public marketing catalog.
+> **System Lead & Architecture:** Built & Architected with precision by **`dev@nkkr`**  
+> **Institute Operating Hours:** 7:00 AM – 7:00 PM Open Daily (Offline Engineering Campus, Indore)
+
+An enterprise-grade, microservice-powered portal built for a premier offline technical coaching institute. The platform manages in-person admissions verification, supervised offline examinations, 35-mark technical mock interviews, batch scheduling, real-time notices, advertised tuition tracking, and a high-converting public course catalog.
 
 ---
 
 ## 1. Architectural Overview & System Design
 
-The platform is designed around **Node.js Express microservices**, an **Nginx API Gateway / Reverse Proxy**, **Neon Serverless PostgreSQL with Prisma ORM**, **Upstash Serverless Redis Pub/Sub** for asynchronous email jobs, and a **React + Vite** frontend.
+The system is architected as high-performance **Node.js Express microservices** unified behind an **API Gateway**, backed by **Neon Serverless PostgreSQL (with Prisma ORM)** and **Upstash Serverless Redis** for ultra-fast sub-15ms cached API queries and background email queuing.
 
 ```
-                              [ Public Web Clients ]  /  [ Dashboards ]
-                                                │
-                                                ▼
-                         ┌──────────────────────────────────────────────┐
-                         │       Nginx API Gateway / Reverse Proxy      │
-                         │             (Port 80 / 443 HTTPS)            │
-                         └──────────────────────┬───────────────────────┘
-                                                │
-               ┌───────────────────┬────────────┴───────┬────────────────────┐
-               │ /api/v1/auth/*    │ /api/v1/users/*    │ /api/v1/courses/*  │ /api/v1/announcements/*
-               ▼                   ▼                    ▼                    ▼
-     ┌───────────────────┐ ┌───────────────┐  ┌───────────────────┐  ┌───────────────────────┐
-     │   Auth Service    │ │ User Service  │  │ Academic Service  │  │  Notification Service │
-     │    (Port 5001)    │ │  (Port 5002)  │  │    (Port 5003)    │  │      (Port 5004)      │
-     └─────────┬─────────┘ └───────┬───────┘  └─────────┬─────────┘  └───────────┬───────────┘
-               │  PUBLISH          │  PUBLISH           │  PUBLISH               │  SUBSCRIBE
-               └───────────────────┴──────────┬─────────┘               ─────────┘
+                              [ Public Web / Student / Admin ]
                                               │
-                      ┌───────────────────────┴───────────────────────┐
-                      │                                               │
-                      ▼                                               ▼
-     ┌─────────────────────────────────┐             ┌─────────────────────────────────┐
-     │   Neon Serverless PostgreSQL    │             │  Upstash Serverless Redis       │
-     │   (Relational Source of Truth)  │             │  Pub/Sub: email_channel         │
-     └─────────────────────────────────┘             └─────────────────────────────────┘
+                                              ▼
+                       ┌──────────────────────────────────────────────┐
+                       │          API Gateway / Reverse Proxy         │
+                       │             (Port 5000 / Port 80)            │
+                       └──────────────────────┬───────────────────────┘
+                                              │
+             ┌───────────────────┬────────────┴───────┬────────────────────┐
+             │ /api/v1/auth/*    │ /api/v1/users/*    │ /api/v1/courses/*  │ /api/v1/announcements/*
+             ▼                   ▼                    ▼                    ▼
+   ┌───────────────────┐ ┌───────────────┐  ┌───────────────────┐  ┌───────────────────────┐
+   │   Auth Service    │ │ User Service  │  │ Academic Service  │  │  Notification Service │
+   │    (Port 5001)    │ │  (Port 5002)  │  │    (Port 5003)    │  │      (Port 5004)      │
+   └─────────┬─────────┘ └───────┬───────┘  └─────────┬─────────┘  └───────────┬───────────┘
+             │                   │                    │                        │
+             └───────────────────┴──────────┬─────────┴────────────────────────┘
+                                            │
+                    ┌───────────────────────┴───────────────────────┐
+                    │                                               │
+                    ▼                                               ▼
+   ┌─────────────────────────────────┐             ┌─────────────────────────────────┐
+   │   Neon Serverless PostgreSQL    │             │  Upstash Serverless Redis       │
+   │   (Relational Source of Truth)  │             │  Caching (30-min TTL, 250MB)    │
+   │   Prisma ORM • Clean Schemas    │             │  Pub/Sub: email_channel         │
+   └─────────────────────────────────┘             └─────────────────────────────────┘
 ```
 
-### Redis Pub/Sub Email Architecture
+---
 
-Email jobs use a **pure Redis Pub/Sub** pattern:
+## 2. Redis Caching & Performance Architecture (Constraints Aware)
 
-| Role | Connection | Description |
-| :--- | :--- | :--- |
-| **Publisher** | `publisherClient` (ioredis) | Auth, User & Academic services publish to `email_channel` |
-| **Subscriber** | `subscriberClient` (ioredis) | Notification Service subscribes to `email_channel` and dispatches emails |
+Both public and authenticated dashboard queries are optimized with a strict Redis caching layer configured for **Upstash Serverless Redis**:
 
-A graceful **direct async fallback** is built-in: if Upstash Redis is unreachable, emails fire directly via `setImmediate` so no HTTP response is ever blocked.
-
-### Microservice Responsibilities & Data Boundaries
-
-| Service | Port | Responsibilities & Data Ownership | Primary Routes |
-| :--- | :--- | :--- | :--- |
-| **Auth Service** | 5001 | Credential verification, rotating refresh tokens, JWT issuance, email verification tokens, password resets, registration intake. | `/api/v1/auth/*` |
-| **User Service** | 5002 | Student & teacher profile management, account lifecycle (Active/Inactive/Suspended), authoritative offline student registry, registration approvals/rejections, audit logs. | `/api/v1/users/*`, `/api/v1/students/*`, `/api/v1/teachers/*`, `/api/v1/registrations/*`, `/api/v1/eligible-emails/*`, `/api/v1/audit-logs/*` |
-| **Academic Service** | 5003 | Course publishing, batch scheduling, faculty assignments, offline examinations, marks recording with revision audit history, draft/published results, success stories CMS, fee records. | `/api/v1/courses/*`, `/api/v1/batches/*`, `/api/v1/exams/*`, `/api/v1/results/*`, `/api/v1/success-stories/*`, `/api/v1/fees/*`, `/api/v1/public/*` |
-| **Notification Service** | 5004 | Multi-level targeted announcements (Institute, Course, Batch, Individual), priority handling, Nodemailer SMTP delivery. **Hosts the Redis Pub/Sub subscriber** that processes all email jobs. | `/api/v1/announcements/*` |
-| **API Gateway / Nginx** | 5000 / 80 | Single public entrypoint routing requests to microservices, forwarding cookies, terminating SSL/TLS, and serving frontend build assets. | All routes |
+- **Available Memory Quota:** Capped and monitored within the **250 MB** storage limit.
+- **Eviction / TTL Strategy:** Operates on a strict **30-minute wipeout window (`TTL = 1800s`)**.
+- **Transparent Response Middleware:** Serves repeated read queries in `< 15ms` with `X-Cache: HIT` HTTP response headers.
+- **Granular Key Namespaces:**
+  - `cache:courses:*` — Public catalog and course modules (30m TTL).
+  - `cache:batches:*` — Active cohort rosters and timings (30m TTL).
+  - `cache:fees:student:<id>` — Per-student fee balance statements (30m TTL).
+  - `cache:mock_interviews:student:<id>` — 35-mark mock interview scorecards (30m TTL).
+  - `cache:announcements:*` — Batch and campus-wide notices (30m TTL).
+  - `cache:stories:*` — Verified alumni placement testimonials (30m TTL).
+- **Automated Cache Invalidation:** Write operations (`POST`, `PUT`, `DELETE`, `PATCH`) automatically invalidate matching key prefixes to prevent stale reads.
+- **Admin Manual Wipe:** Admins can trigger a full instant cache flush via `POST /api/v1/courses/cache/purge` directly from the dashboard console.
 
 ---
 
-## 2. Four Integrated Interfaces
+## 3. Four Core Academic Programs (6 to 8 Months)
 
-1. **Public Website (`/`)**:
-   - High-impact Hero section with live statistics and offline cohort badges.
-   - Offline engineering laboratory pedagogy overview (3-hour practical exams, whiteboard design drills, workstation setups).
-   - Interactive Course Catalog with search, filters, advertised fees, and curriculum syllabus modals.
-   - Technologies curriculum breakdown (React, Node, PostgreSQL, Redis, Docker, System Design).
-   - Graduate Success Stories with alumni placement details, employer logos, packages, and transparent non-guarantee disclosures.
-   - Campus Location Map & Offline Visit Inquiry Form.
-2. **Student Portal (`/student/*`)**:
-   - Enrolled cohort schedules, classroom logistics, and faculty instructor details.
-   - **Offline Exam Results**: Strictly published results only (marks obtained, max marks, percentage, feedback, status). Draft marks are never exposed to students.
-   - Targeted notices and announcements.
-   - Advertised tuition statements, payment records, and remaining balance tracking.
-   - Permitted profile fields editing (phone, address, avatar, guardian contact) and secure password change.
-3. **Teacher Dashboard (`/teacher/*`)**:
-   - Assigned batch rosters with enrolled student contacts and capacity counters.
-   - **Offline Examination Management**: Create in-person lab exams, enter student marks (strictly validated: `0 <= marks <= maxMarks`), save as draft, and publish results.
-   - Automatic revision tracking in `ExamResultHistory` whenever marks on a published exam are edited.
-   - Review pending student admission registration requests within the teacher's authorized batch scope.
-   - Broadcast cohort announcements.
-4. **Admin Dashboard (`/admin/*`)**:
-   - Executive operations console with real-time counters and review queues.
-   - **Registration Approval Flow**: Verify offline student eligibility against the authoritative registry, review teacher applicants, and approve/reject with reviewer notes.
-   - **Authoritative Eligible Student Registry**: Add single or bulk-import offline admitted students via JSON to allow portal self-registration.
-   - Student & Teacher directories with one-click activation, deactivation, and session revocation.
-   - Course & Curriculum CMS (create, edit, publish/unpublish, feature, archive without losing historical records).
-   - Batch scheduling, teacher assignments, and direct student enrollments.
-   - Examination oversight with unpublish/revert capabilities.
-   - Institute-wide announcements with Nodemailer email broadcast dispatch.
-   - Graduate Success Stories CMS.
-   - Student tuition fee ledger & installment recording.
-   - **Security Audit Log Stream**: Searchable, immutable record of all state mutations (passwords and secrets strictly sanitized).
+The academic catalog is streamlined to 4 core intensive offline programs designed for Tier-1 placements:
+
+| # | Program Title | Duration | Advertised Fee | Focus Areas |
+| :- | :--- | :--- | :--- | :--- |
+| **1** | **Full Stack Development** | 32 Weeks (8 Months) | ₹65,000 | React 18, Node.js microservices, TypeScript, PostgreSQL indexing, Redis caching, Docker deployments |
+| **2** | **DevOps & Cloud Engineering** | 28 Weeks (7 Months) | ₹55,000 | Linux internals, Docker, Kubernetes orchestration, Terraform IaC, GitHub Actions CI/CD, AWS architecture |
+| **3** | **Data Structures & Algorithms / Systems (DSE)** | 24 Weeks (6 Months) | ₹45,000 | Advanced graphs, dynamic programming, low-level concurrency, Raft consensus, Tier-1 system design |
+| **4** | **Cybersecurity & Defense** | 24 Weeks (6 Months) | ₹50,000 | OWASP Top 10, penetration testing, cryptography (AES-GCM, TLS 1.3), network traffic analysis, SOC triage |
 
 ---
 
-## 3. Technology Stack
+## 4. Technology Stack
 
-### Frontend
-- **React 18** + **Vite** (Strictly Plain JavaScript / JSX — No TypeScript)
-- **Tailwind CSS** (Curated dark palette: Slate 950 base, Indigo/Emerald/Amber accents, Glassmorphism)
-- **React Router v6** (Browser routing with role-based `ProtectedRoute` guards)
-- **TanStack Query v5** (Server state management, caching, and background invalidation)
-- **React Hook Form** + **Zod** (Accessible forms, real-time client validation)
-- **Lucide React** (Modern developer icon set)
-- **Sonner** (Toast notifications)
+### Frontend (`frontend/`)
+- **React 18** + **Vite** (Plain JSX, fast HMR)
+- **Tailwind CSS** (Custom curated dark theme, sleek glassmorphism, glowing accents)
+- **TanStack Query v5** (Server state synchronization & Redis-aware caching)
+- **React Router v6** (Role-guarded routes for Public, Student, Teacher, and Admin)
+- **Lucide React** (Hardware-accelerated icons)
+- **Sonner** (Lightweight toast notifications)
 
-### Backend
+### Backend (`backend/`)
 - **Node.js (v18+)** + **Express.js** (Microservices architecture)
-- **Prisma ORM** + **Neon Serverless PostgreSQL** (Normalized schema, relations, foreign keys, indexes)
-- **Upstash Serverless Redis** + **ioredis Pub/Sub** (Asynchronous email jobs via `email_channel`, graceful direct fallback)
-- **JWT Authentication** stored exclusively in **HTTP-only cookies** (`accessToken` 15m, rotating `refreshToken` 7d)
-- **bcryptjs** (Password hashing with 12 salt rounds)
-- **Nodemailer** (Branded responsive HTML templates for verification, approvals, rejections, results, and notices)
-- **Cloudinary** (Secure image delivery for thumbnails, avatars, and alumni photos)
-- **Nginx** (Reverse proxy, request limits, cookie passthrough, SSL termination)
-
-### Cloud Infrastructure
-- **Neon** — Serverless PostgreSQL (`DATABASE_URL` — no local Postgres required)
-- **Upstash** — Serverless Redis (`REDIS_URL` — no local Redis required)
+- **Prisma ORM 5.22** + **Neon Serverless PostgreSQL**
+- **Upstash Serverless Redis** + **ioredis** (30-minute caching layer + Pub/Sub email dispatcher)
+- **JWT Authentication** stored strictly in **HTTP-only cookies** (`accessToken` 15m, rotating `refreshToken` 7d)
+- **bcryptjs** (Password hashing with 10 salt rounds)
+- **Nodemailer** (Branded responsive HTML templates for verification, approvals, and notices)
 
 ---
 
-## 4. Local Development Setup (Quick Start)
+## 5. Clean, Production-Grade Seed Accounts
+
+Run `npm run db:seed` to populate the trimmed, verified database:
+
+| Role | Account Email | Password | Details |
+| :--- | :--- | :--- | :--- |
+| **System Administrator** | `admin@infotech.edu` | `SecurePass@2026` | Full administrative operations gateway |
+| **Lead Faculty** | `prof.sharma@infotech.edu` | `SecurePass@2026` | Prof. Vikram Sharma (M.Tech IIT Madras, Ex-Uber & Stripe) |
+| **Active Student 1** | `student@infotech.edu` | `SecurePass@2026` | Rahul Sharma (Roll: `R-1001` • Full Stack Cohort) |
+| **Active Student 2** | `kavita.iyer@infotech.edu` | `SecurePass@2026` | Kavita Iyer (Roll: `R-1002` • DevOps & Cloud Sprint) |
+
+---
+
+## 6. Local Development Setup
 
 ### Prerequisites
-- Node.js 18+ (tested on Node v20 & v24)
+- Node.js 18+ (tested with v20 & v24)
 - npm 9+
-- A **Neon** account with a PostgreSQL database → [console.neon.tech](https://console.neon.tech)
-- An **Upstash** account with a Redis database → [console.upstash.com](https://console.upstash.com)
+- A Neon Serverless PostgreSQL database (`DATABASE_URL`)
+- An Upstash Redis database (`REDIS_URL`)
 
-### Step 1: Clone and Configure Environment Variables
+### Step 1: Clone and Configure Environment
 ```bash
-git clone https://github.com/sahilpatidar94/intern-infotech-portal.git
-cd intern-infotech-portal
-
-# Copy environment template
+git checkout naman_branch
 cp .env.example .env
 ```
-Edit `.env` and fill in your **Neon `DATABASE_URL`**, **Upstash `REDIS_URL`**, JWT secrets, and optional SMTP / Cloudinary credentials.
+Ensure your `.env` contains:
+```env
+DATABASE_URL="postgresql://user:pass@ep-xyz.neon.tech/infotech?sslmode=require"
+REDIS_URL="rediss://default:token@xyz.upstash.io:6379"
+CLIENT_ORIGIN="http://localhost:5173"
+JWT_ACCESS_SECRET="your-32-char-access-secret-here"
+JWT_REFRESH_SECRET="your-32-char-refresh-secret-here"
+JWT_VERIFY_SECRET="your-32-char-verify-secret-here"
+JWT_RESET_SECRET="your-32-char-reset-secret-here"
+```
 
 ### Step 2: Install Monorepo Dependencies
 ```bash
 npm install
 ```
 
-### Step 3: Initialize Database Schema & Seed Data
+### Step 3: Run Database Migrations & Clean Seed
 ```bash
-# Push schema to Neon PostgreSQL
+# Push Prisma schema to Neon
 npm run db:push
 
 # Generate Prisma Client
 npm run db:generate
 
-# Populate comprehensive development seed data
+# Populate clean, lean test data (1 Admin, 1 Teacher, 2 Students, 4 Core Programs)
 npm run db:seed
 ```
 
-### Step 4: Launch the Microservices and Frontend
+### Step 4: Run Locally
 ```bash
-# Concurrently starts API Gateway (5000), Auth (5001), User (5002), Academic (5003), Notification (5004), and Frontend (5173)
+# Start all microservices concurrently + Vite frontend
 npm run dev
 ```
 
-Visit the application at: **`http://localhost:5173`**
-
-> **Note**: The Notification Service (port 5004) automatically starts the Redis Pub/Sub subscriber on startup. Email jobs published by auth-service, user-service, and academic-service will be consumed and dispatched here.
-
----
-
-## 5. Seed Accounts & Credentials
-
-The seed script (`npm run db:seed`) creates verified test accounts:
-
-| Role | Email | Password | Access Area |
-| :--- | :--- | :--- | :--- |
-| **Administrator** | `admin@infotech.edu` | `SecurePass@2026` | `/admin` (Full System Console) |
-| **Lead Faculty** | `prof.sharma@infotech.edu` | `SecurePass@2026` | `/teacher` (Cohorts, Exams, Reviews) |
-| **Co-Instructor** | `dr.anita@infotech.edu` | `SecurePass@2026` | `/teacher` (Assigned Batches) |
-| **Enrolled Student** | `student@infotech.edu` | `SecurePass@2026` | `/student` (Marks, Schedules, Fees) |
-| **Pre-Registered Offline** | `priya.singh@gmail.com` | N/A | Can test `/register-student` flow |
+Visit the app in your browser:
+- **Public Portal:** `http://localhost:5173`
+- **Student Dashboard:** `http://localhost:5173/student`
+- **Admin Console:** `http://localhost:5173/admin`
+- **API Gateway:** `http://localhost:5000/api/v1`
 
 ---
 
-## 6. Secure Initial Admin Bootstrap Procedure
+## 7. Key Features & Highlights
 
-In production environments, default credentials must never be committed to source control. Use the secure interactive bootstrap script:
-
-```bash
-npm run bootstrap:admin
-```
-The wizard will verify whether an administrator exists, securely prompt for an email and strong password, hash the credentials with bcrypt, and record an immutable event in the `AuditLog` table.
-
-Alternatively, set `INITIAL_ADMIN_EMAIL` and `INITIAL_ADMIN_PASSWORD` in your production environment variables before running the command in a non-interactive pipeline.
-
----
-
-## 7. Containerized Deployment with Docker Compose
-
-All microservices run in isolated containers. Neon PostgreSQL and Upstash Redis are consumed as external cloud services — no local database or Redis containers are needed.
-
-```bash
-# Build images and launch 4 microservices + Nginx proxy
-docker-compose up -d --build
-
-# Run Prisma schema push against Neon (only needed on first deploy)
-docker-compose exec auth-service npx prisma db push --schema=backend/shared/prisma/schema.prisma
-
-# Optional: seed development data
-docker-compose exec auth-service npm run db:seed
-```
-Access the application through the Nginx gateway at `http://localhost`.
-
----
-
-## 8. Production Deployment to AWS EC2
-
-### EC2 Security Group Configuration
-Restrict inbound network rules to only required ports:
-- **Port 22 (SSH)**: Restrict to your static deployment IP address or AWS Systems Manager (SSM).
-- **Port 80 (HTTP)**: Allow `0.0.0.0/0` (redirected to HTTPS).
-- **Port 443 (HTTPS)**: Allow `0.0.0.0/0` (public web traffic).
-- **Ports 5001-5004 (Services)**: Keep internal to the Docker bridge network (`internal-net`). **Never expose directly to 0.0.0.0/0.**
-
-> Since Neon and Upstash are cloud-managed services, ports 5432 (Postgres) and 6379 (Redis) no longer need to be considered in EC2 security group rules.
-
-### Automated CI/CD with GitHub Actions
-A complete workflow is provided in `.github/workflows/deploy.yml`. Configure the following repository secrets:
-- `EC2_HOST`: Elastic IP address of your EC2 instance.
-- `EC2_USERNAME`: `ubuntu` (or appropriate AMI user).
-- `EC2_SSH_KEY`: Private SSH deployment key.
-- `PROD_DATABASE_URL`: Your Neon PostgreSQL connection string.
-- `PROD_REDIS_URL`: Your Upstash Redis connection string (`rediss://...`).
-- `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `JWT_VERIFY_SECRET`, `JWT_RESET_SECRET`: Strong 32+ character keys.
-- `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM_ADDRESS`: Production email credentials.
-
----
-
-## 9. Rollback Procedure
-
-If a deployed version encounters issues:
-
-1. **Container Fleet Rollback**:
-   ```bash
-   # Revert Git repository on EC2 to previous stable commit tag
-   git checkout <previous-stable-tag>
-
-   # Rebuild and restart containers
-   docker-compose down
-   docker-compose up -d --build
-   ```
-2. **Database Rollback**:
-   Since the project uses **Neon Serverless PostgreSQL**, you can use Neon's built-in **branching** feature to restore a point-in-time snapshot from the Neon Console — no manual backup scripts required.
-
----
-
-## 10. Security & Compliance Highlights
-
-- **HTTP-Only Cookies**: JWT access and refresh tokens are stored exclusively in HTTP-only, SameSite cookies. The browser never exposes raw tokens to JavaScript or localStorage.
-- **Refresh Token Rotation**: Each token refresh revokes the prior token hash and writes a new random cryptographic seed to prevent replay attacks.
-- **Rate Limiting**: Configured separately for authentication routes (login/register) to mitigate credential stuffing.
-- **Account Enumeration Protection**: Password reset and admission inquiry endpoints return consistent, generic responses.
-- **Secret Sanitization**: Centralized audit logger systematically redacts passwords, tokens, cookies, and credentials before writing to the database.
+1. **Campus Operational Schedule:** Open daily **7:00 AM – 7:00 PM** for physical laboratory access, 1-on-1 code reviews, and offline examinations.
+2. **Interactive Lead Faculty Showcase:** Highlighted on the public landing page with domain specializations, M.Tech IIT Madras background, and Tier-1 industry credentials.
+3. **Developer Branding & Flex:** Integrated **`dev@nkkr`** signature badges in the navigation, dashboard headers, and an interactive terminal credits modal.
+4. **Resolved Dynamic Origin Resolution:** `getClientOrigin(req)` automatically eliminates backend port leakage in password reset and verification emails.
+5. **Strict Auditing:** Every sensitive administrative action (marks modification, approval, status change) is logged in an immutable `AuditLog` table.

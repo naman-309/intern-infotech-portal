@@ -18,6 +18,7 @@ const {
   errorResponse,
   queueEmail,
   logAudit,
+  invalidateCache,
 } = require('@portal/shared');
 
 // Validation Schemas
@@ -425,6 +426,9 @@ class AuthController {
         req,
       });
 
+      // Instantly invalidate registrations cache so admin dashboard sees new request immediately
+      await invalidateCache(['registrations']);
+
       return successResponse(res, {
         statusCode: 201,
         message: 'Registration request submitted successfully. A verification link has been sent to your email.',
@@ -511,6 +515,9 @@ class AuthController {
         req,
       });
 
+      // Instantly invalidate registrations cache so admin dashboard sees new teacher request
+      await invalidateCache(['registrations']);
+
       return successResponse(res, {
         statusCode: 201,
         message: 'Teacher application submitted. Please verify your email via the link sent to your inbox.',
@@ -583,6 +590,9 @@ class AuthController {
         details: { email: request.email, role: request.role },
         req,
       });
+
+      // Invalidate registrations cache so verified status reflects immediately in admin panel
+      await invalidateCache(['registrations']);
 
       return successResponse(res, {
         message: 'Email successfully verified! Your registration request is now awaiting approval by academy administration.',

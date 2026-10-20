@@ -10,8 +10,10 @@ const {
 } = require('@portal/shared');
 
 const updateFeeSchema = z.object({
-  paidAmount: z.number().nonnegative(),
-  paymentStatus: z.enum(['PENDING', 'PARTIAL', 'PAID']),
+  originalFee: z.number().nonnegative('Original course fee cannot be negative').optional(),
+  discountAmount: z.number().nonnegative('Discount amount cannot be negative').optional(),
+  paidAmount: z.number().nonnegative('Paid amount cannot be negative').optional(),
+  paymentStatus: z.enum(['PENDING', 'PARTIAL', 'PAID']).optional(),
   notes: z.string().optional(),
   dueDate: z.string().optional().transform((val) => (val ? new Date(val) : undefined)),
 });
@@ -239,7 +241,8 @@ class FeeController {
         req,
       });
 
-      await invalidateCache(['fees']);
+      // Invalidate fees AND users so student dashboard/360 view update immediately
+      await invalidateCache(['fees', 'users']);
 
       return successResponse(res, {
         statusCode: 201,
@@ -255,28 +258,77 @@ class FeeController {
   }
 
   /**
-   * Admin: Update Fee Record
+   * Admin: Update Fee Record (Configure Discount, Final Payable, or Payment Details)
    */
   async updateFeeRecord(req, res, next) {
     try {
       const { id } = req.params;
       const data = updateFeeSchema.parse(req.body);
 
-      const existing = await prisma.feeRecord.findUnique({ where: { id } });
+      const existing = await prisma.feeRecord.findUnique({
+        where: { id },
+        include: { course: true },
+      });
       if (!existing) {
         return errorResponse(res, { statusCode: 404, message: 'Fee record not found' });
       }
 
-      const balanceAmount = Math.max(0, existing.totalFee - data.paidAmount);
+      // Determine originalFee (fall back to existing.originalFee, or course advertisedFee if 0)
+      const originalFee = data.originalFee !== undefined
+        ? data.originalFee
+        : (existing.originalFee > 0 ? existing.originalFee : (existing.course?.advertisedFee || existing.totalFee));
+
+      // Determine discountAmount
+      const discountAmount = data.discountAmount !== undefined
+        ? data.discountAmount
+        : existing.discountAmount;
+
+      // Validate: discount cannot exceed original course fee or create negative balance
+      if (discountAmount > originalFee) {
+        return errorResponse(res, {
+          statusCode: 400,
+          message: `Discount (₹${discountAmount.toLocaleString()}) cannot exceed original published course fee (₹${originalFee.toLocaleString()}).`,
+        });
+      }
+
+      // Final payable amount = Original course fee - Discount amount
+      const totalFee = Math.max(0, originalFee - discountAmount);
+
+      // Paid amount
+      const paidAmount = data.paidAmount !== undefined ? data.paidAmount : existing.paidAmount;
+
+      // Remaining balance = Final payable amount - Total amount paid
+      const balanceAmount = Math.max(0, totalFee - paidAmount);
+
+      // Determine payment status
+      let paymentStatus = data.paymentStatus;
+      if (!paymentStatus) {
+        paymentStatus = balanceAmount === 0 ? 'PAID' : (paidAmount > 0 ? 'PARTIAL' : 'PENDING');
+      } else if (balanceAmount === 0) {
+        paymentStatus = 'PAID';
+      }
 
       const updated = await prisma.feeRecord.update({
         where: { id },
         data: {
-          paidAmount: data.paidAmount,
+          originalFee,
+          discountAmount,
+          totalFee,
+          paidAmount,
           balanceAmount,
-          paymentStatus: balanceAmount === 0 ? 'PAID' : data.paymentStatus,
-          notes: data.notes,
+          paymentStatus,
+          notes: data.notes !== undefined ? data.notes : existing.notes,
           dueDate: data.dueDate !== undefined ? data.dueDate : existing.dueDate,
+        },
+        include: {
+          course: { select: { id: true, title: true, advertisedFee: true } },
+          batch: { select: { id: true, name: true, batchCode: true } },
+          student: {
+            include: {
+              user: { select: { id: true, firstName: true, lastName: true, email: true } },
+            },
+          },
+          payments: { orderBy: { paidAt: 'desc' } },
         },
       });
 
@@ -285,14 +337,15 @@ class FeeController {
         action: 'FEE_RECORD_UPDATED',
         entity: 'FeeRecord',
         entityId: id,
-        details: { paidAmount: data.paidAmount, balanceAmount },
+        details: { originalFee, discountAmount, totalFee, paidAmount, balanceAmount, paymentStatus },
         req,
       });
 
-      await invalidateCache(['fees']);
+      // Invalidate fees and users so student profile/dashboard reflects updated discount and dues immediately
+      await invalidateCache(['fees', 'users']);
 
       return successResponse(res, {
-        message: 'Fee record updated successfully',
+        message: 'Fee record and discount updated successfully',
         data: { feeRecord: updated },
       });
     } catch (error) {

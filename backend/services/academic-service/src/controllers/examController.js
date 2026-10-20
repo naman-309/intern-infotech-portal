@@ -6,6 +6,7 @@ const {
   paginatedResponse,
   logAudit,
   queueEmail,
+  invalidateCache,
 } = require('@portal/shared');
 
 const createExamSchema = z.object({
@@ -210,6 +211,8 @@ class ExamController {
         req,
       });
 
+      await invalidateCache(['exams', 'batches']);
+
       return successResponse(res, {
         statusCode: 201,
         message: 'Offline exam record created successfully. Marks can now be entered.',
@@ -300,6 +303,8 @@ class ExamController {
         req,
       });
 
+      await invalidateCache(['exams', 'batches', 'users']);
+
       return successResponse(res, {
         message: `Offline exam results published successfully. Notifications dispatched to ${exam.results.length} students.`,
       });
@@ -336,6 +341,8 @@ class ExamController {
         entityId: id,
         req,
       });
+
+      await invalidateCache(['exams', 'batches', 'users']);
 
       return successResponse(res, {
         message: 'Exam results unpublished and reverted to Draft mode for corrections.',

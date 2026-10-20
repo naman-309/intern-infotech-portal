@@ -203,7 +203,6 @@ class RegistrationController {
                 },
               });
 
-              // Also create initial fee record placeholder
               const course = await tx.course.findUnique({ where: { id: batch.courseId } });
               if (course && course.advertisedFee > 0) {
                 await tx.feeRecord.create({
@@ -211,8 +210,10 @@ class RegistrationController {
                     studentId: profile.id,
                     courseId: course.id,
                     batchId: batch.id,
+                    originalFee: course.advertisedFee,
+                    discountAmount: 0.0,
                     totalFee: course.advertisedFee,
-                    paidAmount: 0,
+                    paidAmount: 0.0,
                     balanceAmount: course.advertisedFee,
                     paymentStatus: 'PENDING',
                   },
@@ -314,7 +315,7 @@ class RegistrationController {
           req,
         });
 
-        await invalidateCache(['registrations', 'users']);
+        await invalidateCache(['registrations', 'users', 'teachers_public']);
 
         return successResponse(res, {
           message: 'Teacher registration approved successfully and portal account activated.',

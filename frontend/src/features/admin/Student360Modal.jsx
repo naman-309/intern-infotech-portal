@@ -73,6 +73,41 @@ export const Student360Modal = ({ isOpen, onClose, studentId, onStudentUpdated }
   const mockResults = profile?.mockResults || [];
   const examResults = profile?.examResults || [];
 
+  // Available batches for additional course enrollment
+  const { data: allBatchesData } = useQuery({
+    queryKey: ['adminAllBatchesList'],
+    queryFn: () => api.get('/batches'),
+    enabled: isOpen,
+  });
+  const allBatches = allBatchesData?.data || [];
+
+  const [enrollFormOpen, setEnrollFormOpen] = useState(false);
+  const [enrollBatchId, setEnrollBatchId] = useState('');
+  const [enrollDiscount, setEnrollDiscount] = useState(0);
+
+  const enrollAdditionalMutation = useMutation({
+    mutationFn: async () => {
+      if (!enrollBatchId) throw new Error('Please select a course batch');
+      return api.post(`/batches/${enrollBatchId}/enrollments`, {
+        studentId: profile.id,
+        discountAmount: Math.max(0, parseFloat(enrollDiscount) || 0),
+      });
+    },
+    onSuccess: () => {
+      refetch();
+      queryClient.invalidateQueries({ queryKey: ['adminBatches'] });
+      queryClient.invalidateQueries({ queryKey: ['adminStudents'] });
+      queryClient.invalidateQueries({ queryKey: ['adminFees'] });
+      toast.success('Student enrolled into additional course successfully');
+      setEnrollFormOpen(false);
+      setEnrollBatchId('');
+      setEnrollDiscount(0);
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || err.message || 'Failed to enroll in course');
+    },
+  });
+
   // Populate form states when data loads
   useEffect(() => {
     if (student) {
@@ -557,11 +592,102 @@ export const Student360Modal = ({ isOpen, onClose, studentId, onStudentUpdated }
                 </div>
               </div>
 
-              {/* Enrolled Batches */}
-              <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-3">
-                <h5 className="text-xs font-bold text-slate-200 uppercase font-mono tracking-wider flex items-center gap-1.5">
-                  <BookOpen className="w-3.5 h-3.5 text-indigo-400" /> Enrolled Courses & Batches ({enrollments.length})
-                </h5>
+              {/* Enrolled Batches with Additional Course Enrollment */}
+              <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+                  <div>
+                    <h5 className="text-xs font-bold text-slate-200 uppercase font-mono tracking-wider flex items-center gap-1.5">
+                      <BookOpen className="w-3.5 h-3.5 text-indigo-400" /> Enrolled Courses & Batches ({enrollments.length})
+                    </h5>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      Students can be enrolled in multiple independent cohorts simultaneously.
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setEnrollFormOpen(!enrollFormOpen);
+                      setEnrollBatchId('');
+                      setEnrollDiscount(0);
+                    }}
+                    className="text-xs text-indigo-300 border-indigo-500/30 hover:bg-indigo-500/10"
+                  >
+                    {enrollFormOpen ? 'Cancel' : '+ Enroll in Another Course'}
+                  </Button>
+                </div>
+
+                {/* Additional Enrollment Form */}
+                {enrollFormOpen && (
+                  <div className="p-4 rounded-xl bg-slate-950 border border-indigo-500/30 space-y-3 animate-in fade-in duration-150">
+                    <div className="text-xs font-bold text-indigo-300 font-mono">
+                      ASSIGN ADDITIONAL COURSE TO THIS STUDENT
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-slate-300 mb-1">Select Batch *</label>
+                        <select
+                          value={enrollBatchId}
+                          onChange={(e) => setEnrollBatchId(e.target.value)}
+                          className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-lg text-xs text-white focus:outline-none focus:border-indigo-500"
+                        >
+                          <option value="">Choose Course Batch...</option>
+                          {allBatches.map((b) => (
+                            <option key={b.id} value={b.id}>
+                              {b.course?.title} — {b.name} ({b.batchCode}) [Fee: ₹{(b.course?.advertisedFee || 0).toLocaleString()}]
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-300 mb-1">
+                          Discount Amount (₹) <span className="text-slate-400 font-normal">(Optional concession)</span>
+                        </label>
+                        <Input
+                          type="number"
+                          min="0"
+                          value={enrollDiscount}
+                          onChange={(e) => setEnrollDiscount(Math.max(0, parseFloat(e.target.value) || 0))}
+                          placeholder="0"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Live Preview */}
+                    {enrollBatchId && (() => {
+                      const selectedB = allBatches.find((b) => b.id === enrollBatchId);
+                      const origFee = selectedB?.course?.advertisedFee || 0;
+                      const disc = Math.min(origFee, Math.max(0, parseFloat(enrollDiscount) || 0));
+                      const finalPayable = Math.max(0, origFee - disc);
+
+                      return (
+                        <div className="p-3 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-between font-mono text-xs">
+                          <div className="text-slate-400">
+                            Fee: <span className="text-white">₹{origFee.toLocaleString()}</span> • Discount: <span className="text-emerald-400">-₹{disc.toLocaleString()}</span>
+                          </div>
+                          <div className="font-bold text-sky-300">
+                            Final Payable: ₹{finalPayable.toLocaleString()}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    <div className="flex justify-end gap-2 pt-1">
+                      <Button size="sm" variant="outline" onClick={() => setEnrollFormOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button
+                        size="sm"
+                        disabled={enrollAdditionalMutation.isPending || !enrollBatchId}
+                        onClick={() => enrollAdditionalMutation.mutate()}
+                        className="bg-indigo-600 hover:bg-indigo-500 text-white"
+                      >
+                        Confirm Additional Enrollment
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
                 {enrollments.length === 0 ? (
                   <p className="text-xs text-slate-500 py-3">No active course enrollments found for this student.</p>
                 ) : (
@@ -620,40 +746,57 @@ export const Student360Modal = ({ isOpen, onClose, studentId, onStudentUpdated }
                   <p className="text-xs text-slate-500 py-3">No fee records found for this student.</p>
                 ) : (
                   <div className="space-y-3">
-                    {feeRecords.map((fee) => (
-                      <div
-                        key={fee.id}
-                        className="p-3 rounded-xl bg-slate-950 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
-                      >
-                        <div>
-                          <div className="font-bold text-white">{fee.course?.title}</div>
-                          <div className="text-slate-400 text-[11px] font-mono">
-                            Batch: {fee.batch?.batchCode || 'N/A'}
+                    {feeRecords.map((fee) => {
+                      const origFee = fee.originalFee > 0 ? fee.originalFee : (fee.course?.advertisedFee || fee.totalFee);
+                      const discount = fee.discountAmount || 0;
+
+                      return (
+                        <div
+                          key={fee.id}
+                          className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+                        >
+                          <div>
+                            <div className="font-bold text-white text-sm">{fee.course?.title}</div>
+                            <div className="text-slate-400 text-[11px] font-mono mt-0.5">
+                              Batch: {fee.batch?.name} ({fee.batch?.batchCode || 'N/A'})
+                            </div>
+                            <div className="flex items-center gap-2 mt-1.5 font-mono text-[11px]">
+                              <span className="text-slate-400">Published Fee: {formatCurrency(origFee)}</span>
+                              {discount > 0 && (
+                                <span className="px-1.5 py-0.5 rounded bg-emerald-950/50 text-emerald-300 border border-emerald-500/30">
+                                  Discount: -{formatCurrency(discount)}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-4">
+                            <div className="text-right font-mono">
+                              <div className="text-white font-bold">
+                                Payable: {formatCurrency(fee.totalFee)}
+                              </div>
+                              <div className="text-[11px] text-emerald-400">
+                                Paid: {formatCurrency(fee.paidAmount)}
+                              </div>
+                              <div className="text-[11px] text-amber-400">
+                                Balance: {formatCurrency(fee.balanceAmount)}
+                              </div>
+                            </div>
+                            <Badge
+                              variant={
+                                fee.paymentStatus === 'PAID'
+                                  ? 'success'
+                                  : fee.paymentStatus === 'PARTIAL'
+                                    ? 'warning'
+                                    : 'danger'
+                              }
+                            >
+                              {fee.paymentStatus}
+                            </Badge>
                           </div>
                         </div>
-                        <div className="flex items-center gap-4">
-                          <div className="text-right">
-                            <div className="font-mono text-white">
-                              Paid: {formatCurrency(fee.paidAmount)} / {formatCurrency(fee.totalFee)}
-                            </div>
-                            <div className="text-[11px] font-mono text-rose-400">
-                              Due: {formatCurrency(fee.balanceAmount)}
-                            </div>
-                          </div>
-                          <Badge
-                            variant={
-                              fee.paymentStatus === 'PAID'
-                                ? 'success'
-                                : fee.paymentStatus === 'PARTIAL'
-                                  ? 'warning'
-                                  : 'danger'
-                            }
-                          >
-                            {fee.paymentStatus}
-                          </Badge>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>

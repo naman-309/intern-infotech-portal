@@ -76,25 +76,38 @@ export const StudentFees = () => {
                 </Badge>
               </div>
 
-              {/* 4-Metric Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs font-mono p-4 rounded-xl bg-slate-950/70 border border-slate-800/80">
-                <div>
-                  <div className="text-slate-500 uppercase text-[10px]">Total Tuition Fee</div>
-                  <div className="text-base font-bold text-white mt-0.5">{formatCurrency(fee.totalFee)}</div>
-                </div>
-                <div>
-                  <div className="text-slate-500 uppercase text-[10px]">Total Paid Amount</div>
-                  <div className="text-base font-bold text-emerald-400 mt-0.5">{formatCurrency(fee.paidAmount)}</div>
-                </div>
-                <div>
-                  <div className="text-slate-500 uppercase text-[10px]">Remaining Dues</div>
-                  <div className="text-base font-bold text-amber-400 mt-0.5">{formatCurrency(fee.balanceAmount)}</div>
-                </div>
-                <div>
-                  <div className="text-slate-500 uppercase text-[10px]">Due Date</div>
-                  <div className="text-sm text-slate-300 mt-0.5">{formatDate(fee.dueDate)}</div>
-                </div>
-              </div>
+              {/* Metric Breakdown Grid */}
+              {(() => {
+                const origFee = fee.originalFee > 0 ? fee.originalFee : (fee.course?.advertisedFee || fee.totalFee);
+                const discount = fee.discountAmount || 0;
+
+                return (
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs font-mono p-4 rounded-xl bg-slate-950/70 border border-slate-800/80">
+                    <div>
+                      <div className="text-slate-500 uppercase text-[10px]">Original Fee</div>
+                      <div className="text-sm font-bold text-slate-300 mt-0.5">{formatCurrency(origFee)}</div>
+                    </div>
+                    <div>
+                      <div className="text-slate-500 uppercase text-[10px]">Discount Applied</div>
+                      <div className="text-sm font-bold text-emerald-400 mt-0.5">
+                        {discount > 0 ? `- ${formatCurrency(discount)}` : '₹0'}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-slate-500 uppercase text-[10px]">Final Payable</div>
+                      <div className="text-sm font-bold text-white mt-0.5">{formatCurrency(fee.totalFee)}</div>
+                    </div>
+                    <div>
+                      <div className="text-slate-500 uppercase text-[10px]">Total Paid</div>
+                      <div className="text-sm font-bold text-emerald-400 mt-0.5">{formatCurrency(fee.paidAmount)}</div>
+                    </div>
+                    <div>
+                      <div className="text-slate-500 uppercase text-[10px]">Balance Due</div>
+                      <div className="text-sm font-bold text-amber-400 mt-0.5">{formatCurrency(fee.balanceAmount)}</div>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Chronological Payment Log / Ledger */}
               <div className="space-y-3 pt-2">

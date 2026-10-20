@@ -19,6 +19,8 @@ import {
   History,
   Send,
   AlertCircle,
+  Tag,
+  Percent,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -26,6 +28,7 @@ export const AdminFees = () => {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [selectedFee, setSelectedFee] = useState(null);
+  const [activeTab, setActiveTab] = useState('payment'); // 'payment' | 'discount'
 
   // New Payment Form state
   const [paymentAmount, setPaymentAmount] = useState('');
@@ -34,6 +37,10 @@ export const AdminFees = () => {
   const [receiptNumber, setReceiptNumber] = useState('');
   const [paymentRemarks, setPaymentRemarks] = useState('');
 
+  // Discount Configuration state
+  const [editDiscountAmount, setEditDiscountAmount] = useState(0);
+  const [editNotes, setEditNotes] = useState('');
+
   const { data: feesData, isLoading } = useQuery({
     queryKey: ['adminFees', search],
     queryFn: () => api.get(`/fees?search=${search}`),
@@ -41,16 +48,19 @@ export const AdminFees = () => {
 
   const feeRecords = feesData?.data || [];
 
-  const handleOpenPaymentModal = (fee) => {
+  const handleOpenPaymentModal = (fee, initialTab = 'payment') => {
     setSelectedFee(fee);
+    setActiveTab(initialTab);
     setPaymentAmount('');
     setPaymentMethod('UPI');
     setTransactionRef('');
     setReceiptNumber(`RCP-${Date.now().toString().slice(-6)}`);
     setPaymentRemarks('');
+    setEditDiscountAmount(fee.discountAmount || 0);
+    setEditNotes(fee.notes || '');
   };
 
-  // Record Payment Installment Mutation
+  // 1. Record Payment Installment Mutation
   const recordPaymentMutation = useMutation({
     mutationFn: async () => {
       const amount = parseFloat(paymentAmount);
@@ -68,10 +78,10 @@ export const AdminFees = () => {
     },
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['adminFees'] });
+      queryClient.invalidateQueries({ queryKey: ['adminStudents'] });
       toast.success(
         `Payment of ${formatCurrency(parseFloat(paymentAmount))} recorded! Student email sent via Redis queue.`
       );
-      // Update local selectedFee with the latest response data
       if (res?.data?.feeRecord) {
         setSelectedFee(res.data.feeRecord);
       } else {
@@ -82,14 +92,45 @@ export const AdminFees = () => {
       setPaymentRemarks('');
     },
     onError: (err) => {
-      toast.error(err.message || 'Failed to record payment');
+      toast.error(err.response?.data?.message || err.message || 'Failed to record payment');
     },
   });
 
-  // Calculate live preview
+  // 2. Update Discount Configuration Mutation
+  const updateDiscountMutation = useMutation({
+    mutationFn: async () => {
+      const discount = Math.max(0, parseFloat(editDiscountAmount) || 0);
+      return api.put(`/fees/${selectedFee.id}`, {
+        discountAmount: discount,
+        notes: editNotes,
+      });
+    },
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['adminFees'] });
+      queryClient.invalidateQueries({ queryKey: ['adminStudents'] });
+      toast.success('Course enrollment discount and payable amount updated successfully');
+      if (res?.data?.feeRecord) {
+        setSelectedFee(res.data.feeRecord);
+      }
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || err.message || 'Failed to update discount');
+    },
+  });
+
+  // Calculations for live previews
+  const originalCourseFee = selectedFee
+    ? (selectedFee.originalFee > 0 ? selectedFee.originalFee : (selectedFee.course?.advertisedFee || selectedFee.totalFee))
+    : 0;
+  const currentDiscount = selectedFee ? (selectedFee.discountAmount || 0) : 0;
+  const newDiscount = Math.max(0, parseFloat(editDiscountAmount) || 0);
+  const previewFinalPayable = Math.max(0, originalCourseFee - newDiscount);
+  const currentPaid = selectedFee ? selectedFee.paidAmount : 0;
+  const previewNewRemaining = Math.max(0, previewFinalPayable - currentPaid);
+
   const numPaymentAmount = parseFloat(paymentAmount) || 0;
-  const previewPaid = selectedFee ? selectedFee.paidAmount + numPaymentAmount : 0;
-  const previewRemaining = selectedFee ? Math.max(0, selectedFee.totalFee - previewPaid) : 0;
+  const previewPaymentPaid = selectedFee ? selectedFee.paidAmount + numPaymentAmount : 0;
+  const previewPaymentRemaining = selectedFee ? Math.max(0, selectedFee.totalFee - previewPaymentPaid) : 0;
 
   return (
     <div className="space-y-6">
@@ -97,7 +138,7 @@ export const AdminFees = () => {
         <div>
           <h2 className="text-2xl font-bold text-white tracking-tight">Tuition & Fee Administration</h2>
           <p className="text-xs text-slate-400 mt-1">
-            Track student fee balances, record partial installments with full payment history, and automatically notify students.
+            Manage course fees, configure enrollment discounts, and record partial payment installments with receipts.
           </p>
         </div>
       </div>
@@ -123,179 +164,308 @@ export const AdminFees = () => {
               <tr>
                 <th className="p-4">Student</th>
                 <th className="p-4">Program & Batch</th>
-                <th className="p-4">Total Fee</th>
+                <th className="p-4">Original Fee</th>
+                <th className="p-4">Discount</th>
+                <th className="p-4">Final Payable</th>
                 <th className="p-4">Total Paid</th>
                 <th className="p-4">Remaining Dues</th>
                 <th className="p-4">Status</th>
-                <th className="p-4 text-center">Installments</th>
-                <th className="p-4 text-right">Action</th>
+                <th className="p-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/80 font-mono">
-              {feeRecords.map((fee) => (
-                <tr key={fee.id} className="hover:bg-slate-800/30 transition-colors">
-                  <td className="p-4">
-                    <div className="font-bold text-white font-sans">
-                      {fee.student.user?.firstName} {fee.student.user?.lastName}
-                    </div>
-                    <div className="text-[11px] text-slate-400">{fee.student.user?.email}</div>
-                  </td>
-                  <td className="p-4">
-                    <div className="text-white font-sans">{fee.course.title}</div>
-                    <div className="text-[11px] text-brand-400 font-mono">{fee.batch.name}</div>
-                  </td>
-                  <td className="p-4 font-bold text-white">{formatCurrency(fee.totalFee)}</td>
-                  <td className="p-4 font-bold text-emerald-400">{formatCurrency(fee.paidAmount)}</td>
-                  <td className="p-4 font-bold text-amber-400">{formatCurrency(fee.balanceAmount)}</td>
-                  <td className="p-4">
-                    <Badge variant={fee.paymentStatus === 'PAID' ? 'success' : fee.paymentStatus === 'PARTIAL' ? 'warning' : 'danger'}>
-                      {fee.paymentStatus}
-                    </Badge>
-                  </td>
-                  <td className="p-4 text-center">
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-slate-800 text-slate-300">
-                      {fee.payments?.length || 0} logged
-                    </span>
-                  </td>
-                  <td className="p-4 text-right">
-                    <Button
-                      size="sm"
-                      variant="primary"
-                      onClick={() => handleOpenPaymentModal(fee)}
-                      className="text-xs gap-1.5 font-sans bg-brand-500 hover:bg-brand-600 text-white"
-                    >
-                      <PlusCircle className="w-3.5 h-3.5" /> Add Payment
-                    </Button>
-                  </td>
-                </tr>
-              ))}
+              {feeRecords.map((fee) => {
+                const origFee = fee.originalFee > 0 ? fee.originalFee : (fee.course?.advertisedFee || fee.totalFee);
+                const discount = fee.discountAmount || 0;
+
+                return (
+                  <tr key={fee.id} className="hover:bg-slate-800/30 transition-colors">
+                    <td className="p-4">
+                      <div className="font-bold text-white font-sans">
+                        {fee.student?.user?.firstName} {fee.student?.user?.lastName}
+                      </div>
+                      <div className="text-[11px] text-slate-400 font-mono">{fee.student?.user?.email}</div>
+                    </td>
+                    <td className="p-4">
+                      <div className="text-white font-sans">{fee.course?.title}</div>
+                      <div className="text-[11px] text-sky-400 font-mono">{fee.batch?.name}</div>
+                    </td>
+                    <td className="p-4 font-bold text-slate-300">
+                      {formatCurrency(origFee)}
+                    </td>
+                    <td className="p-4">
+                      {discount > 0 ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-emerald-950/40 text-emerald-300 border border-emerald-500/30">
+                          - {formatCurrency(discount)}
+                        </span>
+                      ) : (
+                        <span className="text-slate-500 font-normal">₹0</span>
+                      )}
+                    </td>
+                    <td className="p-4 font-bold text-white">
+                      {formatCurrency(fee.totalFee)}
+                    </td>
+                    <td className="p-4 font-bold text-emerald-400">
+                      {formatCurrency(fee.paidAmount)}
+                    </td>
+                    <td className="p-4 font-bold text-amber-400">
+                      {formatCurrency(fee.balanceAmount)}
+                    </td>
+                    <td className="p-4">
+                      <Badge
+                        variant={
+                          fee.paymentStatus === 'PAID'
+                            ? 'success'
+                            : fee.paymentStatus === 'PARTIAL'
+                            ? 'warning'
+                            : 'danger'
+                        }
+                      >
+                        {fee.paymentStatus}
+                      </Badge>
+                    </td>
+                    <td className="p-4 text-right">
+                      <div className="flex items-center justify-end gap-1.5 font-sans">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleOpenPaymentModal(fee, 'discount')}
+                          className="text-xs text-indigo-400 hover:bg-indigo-500/10 border-indigo-500/30"
+                          title="Configure Enrollment Discount"
+                        >
+                          <Tag className="w-3.5 h-3.5 mr-1" /> Discount
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="primary"
+                          onClick={() => handleOpenPaymentModal(fee, 'payment')}
+                          className="text-xs gap-1.5 bg-sky-500 hover:bg-sky-600 text-white shadow-sm shadow-sky-500/20"
+                        >
+                          <PlusCircle className="w-3.5 h-3.5" /> Add Payment
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       )}
 
-      {/* RECORD PAYMENT & TRANSACTION LEDGER MODAL */}
+      {/* RECORD PAYMENT & FEE CONFIGURATION MODAL */}
       {selectedFee && (
         <Modal
           isOpen={!!selectedFee}
           onClose={() => setSelectedFee(null)}
           title={`Fee Account: ${selectedFee.student?.user?.firstName} ${selectedFee.student?.user?.lastName}`}
-          description={`${selectedFee.course?.title} • Batch: ${selectedFee.batch?.name}`}
+          description={`${selectedFee.course?.title} • Batch: ${selectedFee.batch?.name || selectedFee.batch?.batchCode}`}
         >
-          <div className="space-y-6 max-h-[75vh] overflow-y-auto pr-1">
-            {/* Financial Calculations Summary */}
-            <div className="grid grid-cols-3 gap-3 p-3.5 rounded-xl bg-slate-950 border border-slate-800 text-center">
+          <div className="space-y-5 max-h-[75vh] overflow-y-auto pr-1 text-xs">
+            {/* Financial Calculations Summary Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3.5 rounded-xl bg-slate-950 border border-slate-800 text-center font-mono">
               <div>
-                <div className="text-[10px] text-slate-400 uppercase font-mono">Total Fee</div>
-                <div className="text-base font-bold text-white font-mono mt-0.5">
+                <div className="text-[10px] text-slate-400 uppercase">Original Fee</div>
+                <div className="text-sm font-bold text-white mt-0.5">
+                  {formatCurrency(originalCourseFee)}
+                </div>
+              </div>
+              <div>
+                <div className="text-[10px] text-emerald-400 uppercase">Discount Granted</div>
+                <div className="text-sm font-bold text-emerald-400 mt-0.5">
+                  - {formatCurrency(selectedFee.discountAmount || 0)}
+                </div>
+              </div>
+              <div>
+                <div className="text-[10px] text-sky-400 uppercase">Final Payable</div>
+                <div className="text-sm font-bold text-sky-300 mt-0.5">
                   {formatCurrency(selectedFee.totalFee)}
                 </div>
               </div>
-              <div className="border-x border-slate-800">
-                <div className="text-[10px] text-emerald-400 uppercase font-mono">Total Paid</div>
-                <div className="text-base font-bold text-emerald-400 font-mono mt-0.5">
-                  {formatCurrency(selectedFee.paidAmount)}
-                </div>
-              </div>
               <div>
-                <div className="text-[10px] text-amber-400 uppercase font-mono">Remaining Dues</div>
-                <div className="text-base font-bold text-amber-400 font-mono mt-0.5">
+                <div className="text-[10px] text-amber-400 uppercase">Balance Due</div>
+                <div className="text-sm font-bold text-amber-400 mt-0.5">
                   {formatCurrency(selectedFee.balanceAmount)}
                 </div>
               </div>
             </div>
 
-            {/* Record New Payment Form */}
-            <div className="p-4 rounded-xl border border-brand-500/30 bg-brand-950/20 space-y-4">
-              <div className="flex items-center gap-2 text-white font-semibold text-xs tracking-wide">
-                <CreditCard className="w-4 h-4 text-brand-400" />
-                <span>RECORD NEW PAYMENT INSTALLMENT</span>
-              </div>
+            {/* Sub-Tabs: Payment vs Discount Configuration */}
+            <div className="flex border-b border-slate-800 text-xs">
+              <button
+                type="button"
+                onClick={() => setActiveTab('payment')}
+                className={`px-4 py-2 font-medium border-b-2 transition-colors flex items-center gap-1.5 ${
+                  activeTab === 'payment'
+                    ? 'border-sky-500 text-sky-400 font-semibold'
+                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <CreditCard className="w-3.5 h-3.5" /> Record Payment Installment
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('discount')}
+                className={`px-4 py-2 font-medium border-b-2 transition-colors flex items-center gap-1.5 ${
+                  activeTab === 'discount'
+                    ? 'border-indigo-500 text-indigo-400 font-semibold'
+                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Tag className="w-3.5 h-3.5" /> Configure Discount & Payable Amount
+              </button>
+            </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* TAB A: RECORD PAYMENT FORM */}
+            {activeTab === 'payment' && (
+              <div className="p-4 rounded-xl border border-sky-500/30 bg-sky-950/20 space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-300 mb-1">
+                      Installment Amount (INR) <span className="text-red-400">*</span>
+                    </label>
+                    <Input
+                      type="number"
+                      min="1"
+                      placeholder="e.g. 5000"
+                      value={paymentAmount}
+                      onChange={(e) => setPaymentAmount(e.target.value)}
+                      className="font-mono"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-slate-300 mb-1">Payment Method</label>
+                    <Select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
+                      <option value="UPI">UPI / QR Code</option>
+                      <option value="CASH">Cash at Desk</option>
+                      <option value="BANK_TRANSFER">Bank IMPS / NEFT</option>
+                      <option value="CHEQUE">Cheque / Demand Draft</option>
+                      <option value="CARD">Debit / Credit Card</option>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-slate-300 mb-1">Receipt Number</label>
+                    <Input
+                      placeholder="RCP-123456"
+                      value={receiptNumber}
+                      onChange={(e) => setReceiptNumber(e.target.value)}
+                      className="font-mono text-xs"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-slate-300 mb-1">
+                      Transaction / UTR / Cheque Ref
+                    </label>
+                    <Input
+                      placeholder="e.g. UPI-99882211"
+                      value={transactionRef}
+                      onChange={(e) => setTransactionRef(e.target.value)}
+                      className="font-mono text-xs"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-slate-300 mb-1">Remarks / Note</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Second installment paid via PhonePe"
+                    value={paymentRemarks}
+                    onChange={(e) => setPaymentRemarks(e.target.value)}
+                    className="w-full rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-sky-500"
+                  />
+                </div>
+
+                {numPaymentAmount > 0 && (
+                  <div className="p-3 rounded-lg bg-slate-900/90 border border-slate-800 flex items-center justify-between text-xs">
+                    <div className="text-slate-400">After this payment:</div>
+                    <div className="flex gap-4 font-mono font-bold">
+                      <span className="text-emerald-400">Paid: {formatCurrency(previewPaymentPaid)}</span>
+                      <span className="text-amber-400">Remaining: {formatCurrency(previewPaymentRemaining)}</span>
+                    </div>
+                  </div>
+                )}
+
+                <Button
+                  size="sm"
+                  className="w-full gap-2 bg-sky-500 hover:bg-sky-600 text-white font-semibold py-2.5"
+                  disabled={recordPaymentMutation.isPending || !paymentAmount || parseFloat(paymentAmount) <= 0}
+                  onClick={() => recordPaymentMutation.mutate()}
+                >
+                  <Send className="w-4 h-4" /> Save Payment & Send Email Notification
+                </Button>
+              </div>
+            )}
+
+            {/* TAB B: CONFIGURE DISCOUNT FORM */}
+            {activeTab === 'discount' && (
+              <div className="p-4 rounded-xl border border-indigo-500/30 bg-indigo-950/20 space-y-4">
                 <div>
                   <label className="block text-xs font-medium text-slate-300 mb-1">
-                    Installment Amount (INR) <span className="text-red-400">*</span>
+                    Discount Amount (₹) <span className="text-slate-400 font-normal">(Financial concession for this course enrollment)</span>
                   </label>
                   <Input
                     type="number"
-                    min="1"
+                    min="0"
+                    max={originalCourseFee}
+                    value={editDiscountAmount}
+                    onChange={(e) => setEditDiscountAmount(Math.max(0, parseFloat(e.target.value) || 0))}
                     placeholder="e.g. 5000"
-                    value={paymentAmount}
-                    onChange={(e) => setPaymentAmount(e.target.value)}
                     className="font-mono"
                   />
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Original published fee: <strong>{formatCurrency(originalCourseFee)}</strong>. Discount cannot exceed this amount.
+                  </p>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">Payment Method</label>
-                  <Select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
-                    <option value="UPI">UPI / QR Code</option>
-                    <option value="CASH">Cash at Desk</option>
-                    <option value="BANK_TRANSFER">Bank IMPS / NEFT</option>
-                    <option value="CHEQUE">Cheque / Demand Draft</option>
-                    <option value="CARD">Debit / Credit Card</option>
-                  </Select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">Receipt Number</label>
-                  <Input
-                    placeholder="RCP-123456"
-                    value={receiptNumber}
-                    onChange={(e) => setReceiptNumber(e.target.value)}
-                    className="font-mono text-xs"
+                  <label className="block text-xs font-medium text-slate-300 mb-1">Administrative Note / Reason</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Merit scholarship / sibling discount granted by director"
+                    value={editNotes}
+                    onChange={(e) => setEditNotes(e.target.value)}
+                    className="w-full rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-indigo-500"
                   />
                 </div>
 
-                <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">
-                    Transaction / UTR / Cheque Ref
-                  </label>
-                  <Input
-                    placeholder="e.g. UPI-99882211"
-                    value={transactionRef}
-                    onChange={(e) => setTransactionRef(e.target.value)}
-                    className="font-mono text-xs"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">Remarks / Note</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Second installment paid via PhonePe"
-                  value={paymentRemarks}
-                  onChange={(e) => setPaymentRemarks(e.target.value)}
-                  className="w-full rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-brand-500"
-                />
-              </div>
-
-              {/* Dynamic Calculation Live Preview */}
-              {numPaymentAmount > 0 && (
-                <div className="p-3 rounded-lg bg-slate-900/90 border border-slate-800 flex items-center justify-between text-xs">
-                  <div className="text-slate-400">
-                    After this payment:
+                {/* Live Formula Preview */}
+                <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5 font-mono text-xs">
+                  <div className="flex justify-between text-slate-400">
+                    <span>Original Course Fee:</span>
+                    <span className="text-white">{formatCurrency(originalCourseFee)}</span>
                   </div>
-                  <div className="flex gap-4 font-mono font-bold">
-                    <span className="text-emerald-400">Paid: {formatCurrency(previewPaid)}</span>
-                    <span className="text-amber-400">Remaining: {formatCurrency(previewRemaining)}</span>
+                  <div className="flex justify-between text-emerald-400">
+                    <span>Applied Discount:</span>
+                    <span>- {formatCurrency(newDiscount)}</span>
+                  </div>
+                  <div className="flex justify-between font-bold text-sky-300 border-t border-slate-800 pt-1.5">
+                    <span>Final Payable Amount:</span>
+                    <span className="text-white">{formatCurrency(previewFinalPayable)}</span>
+                  </div>
+                  <div className="flex justify-between text-slate-400">
+                    <span>Already Paid Amount:</span>
+                    <span className="text-emerald-400">{formatCurrency(currentPaid)}</span>
+                  </div>
+                  <div className="flex justify-between font-bold text-amber-400 border-t border-slate-800 pt-1.5">
+                    <span>New Remaining Balance:</span>
+                    <span className="text-amber-300">{formatCurrency(previewNewRemaining)}</span>
                   </div>
                 </div>
-              )}
 
-              <Button
-                variant="primary"
-                size="sm"
-                className="w-full gap-2 bg-brand-500 hover:bg-brand-600 text-white font-semibold py-2.5"
-                isLoading={recordPaymentMutation.isPending}
-                onClick={() => recordPaymentMutation.mutate()}
-                disabled={!paymentAmount || parseFloat(paymentAmount) <= 0}
-              >
-                <Send className="w-4 h-4" /> Save Payment & Send Email Notification
-              </Button>
-            </div>
+                <Button
+                  size="sm"
+                  className="w-full gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2.5"
+                  disabled={updateDiscountMutation.isPending || newDiscount > originalCourseFee}
+                  onClick={() => updateDiscountMutation.mutate()}
+                >
+                  <CheckCircle2 className="w-4 h-4" /> Save Discount & Update Payable Balance
+                </Button>
+              </div>
+            )}
 
             {/* Complete Chronological History / Ledger */}
             <div className="space-y-2">
@@ -327,7 +497,7 @@ export const AdminFees = () => {
                       {selectedFee.payments.map((p) => (
                         <tr key={p.id} className="hover:bg-slate-800/30">
                           <td className="p-2.5 whitespace-nowrap text-slate-400">{formatDate(p.paidAt)}</td>
-                          <td className="p-2.5 font-bold text-brand-400">{p.receiptNumber || '—'}</td>
+                          <td className="p-2.5 font-bold text-sky-400">{p.receiptNumber || '—'}</td>
                           <td className="p-2.5">
                             <span className="px-1.5 py-0.5 rounded text-[10px] bg-slate-800 text-slate-300">
                               {p.paymentMethod}

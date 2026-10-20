@@ -34,6 +34,7 @@ export const AdminBatches = () => {
 
   const [selectedTeacherId, setSelectedTeacherId] = useState('');
   const [selectedStudentId, setSelectedStudentId] = useState('');
+  const [enrollDiscountAmount, setEnrollDiscountAmount] = useState(0);
 
   // 1. Fetch Batches
   const { data: batchesData, isLoading } = useQuery({
@@ -102,16 +103,24 @@ export const AdminBatches = () => {
 
   const onEnrollStudent = async () => {
     try {
-      if (!selectedStudentId) return;
+      if (!selectedStudentId) {
+        toast.error('Please select a student to enroll');
+        return;
+      }
+      const disc = Math.max(0, parseFloat(enrollDiscountAmount) || 0);
       await api.post(`/batches/${selectedBatch.id}/enrollments`, {
         studentId: selectedStudentId,
+        discountAmount: disc,
       });
       queryClient.invalidateQueries({ queryKey: ['adminBatches'] });
+      queryClient.invalidateQueries({ queryKey: ['adminStudents'] });
+      queryClient.invalidateQueries({ queryKey: ['adminFees'] });
       toast.success('Student enrolled into batch successfully');
       setEnrollStudentModalOpen(false);
       setSelectedStudentId('');
+      setEnrollDiscountAmount(0);
     } catch (err) {
-      toast.error(err.message || 'Failed to enroll student');
+      toast.error(err.response?.data?.message || err.message || 'Failed to enroll student');
     }
   };
 
@@ -301,17 +310,17 @@ export const AdminBatches = () => {
         </Modal>
       )}
 
-      {/* ENROLL STUDENT MODAL */}
+      {/* ENROLL STUDENT MODAL WITH DISCOUNT CALCULATION */}
       {selectedBatch && (
         <Modal
           isOpen={enrollStudentModalOpen}
           onClose={() => setEnrollStudentModalOpen(false)}
           title={`Enroll Student into ${selectedBatch.name}`}
-          description="Directly enroll an active student into this offline laboratory batch"
+          description={`Program: ${selectedBatch.course?.title || 'Selected Course'} • Original Fee: ₹${(selectedBatch.course?.advertisedFee || 0).toLocaleString()}`}
         >
-          <div className="space-y-4">
+          <div className="space-y-4 text-xs">
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">Select Student</label>
+              <label className="block font-medium text-slate-300 mb-1">Select Student *</label>
               <Select value={selectedStudentId} onChange={(e) => setSelectedStudentId(e.target.value)}>
                 <option value="">Choose Student...</option>
                 {students.map((s) => (
@@ -322,12 +331,44 @@ export const AdminBatches = () => {
               </Select>
             </div>
 
+            <div>
+              <label className="block font-medium text-slate-300 mb-1">
+                Discount Amount (₹) <span className="text-slate-400 font-normal">(Financial aid / scholarship)</span>
+              </label>
+              <Input
+                type="number"
+                min="0"
+                max={selectedBatch.course?.advertisedFee || 0}
+                value={enrollDiscountAmount}
+                onChange={(e) => setEnrollDiscountAmount(Math.max(0, parseFloat(e.target.value) || 0))}
+                placeholder="0"
+              />
+            </div>
+
+            {/* Live Fee Calculation Preview */}
+            <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5 font-mono text-xs">
+              <div className="flex justify-between text-slate-400">
+                <span>Original Course Fee:</span>
+                <span className="text-white">₹{(selectedBatch.course?.advertisedFee || 0).toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between text-emerald-400">
+                <span>Applied Discount:</span>
+                <span>- ₹{(Number(enrollDiscountAmount) || 0).toLocaleString()}</span>
+              </div>
+              <div className="border-t border-slate-800 pt-1.5 flex justify-between font-bold text-sky-300">
+                <span>Final Payable Amount:</span>
+                <span className="text-sm text-white">
+                  ₹{Math.max(0, (selectedBatch.course?.advertisedFee || 0) - (Number(enrollDiscountAmount) || 0)).toLocaleString()}
+                </span>
+              </div>
+            </div>
+
             <div className="pt-2 flex justify-end gap-2">
               <Button variant="outline" size="sm" onClick={() => setEnrollStudentModalOpen(false)}>
                 Cancel
               </Button>
-              <Button size="sm" onClick={onEnrollStudent}>
-                Enroll Student
+              <Button size="sm" onClick={onEnrollStudent} className="bg-sky-500 hover:bg-sky-600 text-white">
+                Confirm Enrollment
               </Button>
             </div>
           </div>
