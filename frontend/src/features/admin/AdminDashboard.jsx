@@ -91,27 +91,38 @@ export const AdminDashboard = () => {
 
   return (
     <div className="space-y-8">
-      {/* Executive Welcome Banner */}
-      <div className="p-6 md:p-8 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950/50 to-slate-900 border border-slate-800 shadow-xl">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-500/10 text-rose-400 text-xs font-mono mb-2">
-              <ShieldAlert className="w-3.5 h-3.5" />
-              SYSTEM ADMINISTRATION GATEWAY • FULL ACCESS
+      {/* Executive Welcome Banner with dev@nkkr flex & Operating Hours */}
+      <div className="p-6 md:p-8 rounded-3xl bg-gradient-to-r from-slate-900 via-sky-950/40 to-slate-900 border border-sky-500/30 shadow-2xl relative overflow-hidden">
+        <div className="absolute right-0 top-0 w-80 h-80 bg-sky-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-500/10 text-rose-400 text-xs font-mono border border-rose-500/20">
+                <ShieldAlert className="w-3.5 h-3.5" />
+                SYSTEM ADMINISTRATION • FULL ACCESS
+              </span>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-mono border border-emerald-500/20">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span>Campus Hours: <strong>7:00 AM – 7:00 PM</strong></span>
+              </div>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+
+            <h1 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight">
               Institute Operations Console
             </h1>
-            <p className="text-xs text-slate-400 mt-1 max-w-xl">
-              Oversee admissions, manage faculty appointments, publish academic curriculums, and audit administrative actions.
+            <p className="text-xs sm:text-sm text-slate-300 max-w-xl font-light">
+              Oversee admissions, manage faculty appointments, publish academic curriculums, and audit administrative actions in real time.
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 text-xs font-mono border border-emerald-500/20">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <Zap className="w-3.5 h-3.5" />
-              Upstash Redis Cache (250MB Safe)
+            <div className="px-3.5 py-2 rounded-2xl bg-slate-950/90 border border-slate-800 flex items-center gap-3">
+              <div className="w-2 h-2 rounded-full bg-sky-400 animate-pulse"></div>
+              <div>
+                <div className="text-[10px] text-slate-500 font-mono uppercase">System Lead</div>
+                <div className="text-xs font-bold text-sky-300 font-mono">dev@nkkr</div>
+              </div>
             </div>
 
             <Button
@@ -120,14 +131,14 @@ export const AdminDashboard = () => {
               onClick={handlePurgeCache}
               disabled={isPurging}
               className="gap-2 border-slate-700 bg-slate-900/60 hover:border-amber-500/50 hover:bg-amber-500/10 text-slate-300 hover:text-amber-300 transition-colors"
-              title="Wipe cached query data across Redis (Free tier 250MB storage & 500k commands safe)"
+              title="Wipe cached query data across Redis (Free tier 250MB storage & 30-min TTL strategy)"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isPurging ? 'animate-spin text-amber-400' : 'text-slate-400'}`} />
               {isPurging ? 'Purging Cache...' : 'Flush Redis Cache'}
             </Button>
 
             <Link to="/admin/registrations">
-              <Button size="sm" variant="primary" className="gap-2">
+              <Button size="sm" variant="primary" className="gap-2 bg-sky-500 hover:bg-sky-600 text-white font-medium shadow-md shadow-sky-500/20">
                 <FileCheck2 className="w-4 h-4" />
                 Review Requests ({pendingStudents.length + pendingTeachers.length})
               </Button>

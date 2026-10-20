@@ -25,9 +25,11 @@ import {
   ShieldAlert,
 } from 'lucide-react';
 import { Badge } from '../ui/Badge';
+import { DevBadge, DevCreditsModal } from './DevCreditsModal';
 
 export const DashboardLayout = ({ role }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [creditsOpen, setCreditsOpen] = useState(false);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -151,6 +153,10 @@ export const DashboardLayout = ({ role }) => {
 
         {/* Bottom Actions */}
         <div className="p-4 border-t border-slate-800 space-y-2">
+          <div className="px-2 py-1.5 flex items-center justify-between">
+            <span className="text-[10px] text-slate-500 font-mono">System Lead:</span>
+            <DevBadge onClick={() => setCreditsOpen(true)} />
+          </div>
           <Link
             to="/"
             className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800/40 transition-colors"
@@ -179,8 +185,9 @@ export const DashboardLayout = ({ role }) => {
 
           <div className="flex items-center gap-4">
             <span className="text-xs text-slate-400 hidden sm:inline-block font-mono">
-              Offline Center: Geeta Bhawan, Indore
+              Hours: 7:00 AM – 7:00 PM
             </span>
+            <DevBadge onClick={() => setCreditsOpen(true)} className="hidden sm:inline-flex" />
             <div className="w-2 h-2 rounded-full bg-emerald-500" title="Connected to Academic Gateway"></div>
           </div>
         </header>
@@ -189,6 +196,8 @@ export const DashboardLayout = ({ role }) => {
           <Outlet />
         </div>
       </main>
+
+      <DevCreditsModal isOpen={creditsOpen} onClose={() => setCreditsOpen(false)} />
     </div>
   );
 };
