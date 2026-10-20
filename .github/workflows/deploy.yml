@@ -58,10 +58,10 @@ jobs:
           script: |
             set -e
             echo "Starting deployment on AWS EC2..."
-            
+
             APP_DIR="/var/www/intern-infotech"
-            mkdir -p $APP_DIR
-            cd $APP_DIR
+            mkdir -p "$APP_DIR"
+            cd "$APP_DIR"
 
             # Pull latest code or clone if fresh
             if [ -d ".git" ]; then
@@ -74,29 +74,29 @@ jobs:
             # Check if production .env exists, if not initialize from secrets
             if [ ! -f ".env" ]; then
               echo "Creating .env from secure GitHub Actions secrets..."
-              cat <<EOF > .env
-NODE_ENV=production
-DATABASE_URL=${{ secrets.PROD_DATABASE_URL }}
-REDIS_URL=${{ secrets.PROD_REDIS_URL }}
-JWT_ACCESS_SECRET=${{ secrets.JWT_ACCESS_SECRET }}
-JWT_REFRESH_SECRET=${{ secrets.JWT_REFRESH_SECRET }}
-JWT_VERIFY_SECRET=${{ secrets.JWT_VERIFY_SECRET }}
-JWT_RESET_SECRET=${{ secrets.JWT_RESET_SECRET }}
-CLIENT_ORIGIN=${{ secrets.PROD_CLIENT_ORIGIN }}
-PUBLIC_API_URL=${{ secrets.PROD_PUBLIC_API_URL }}
-COOKIE_SECURE=false
-COOKIE_SAME_SITE=lax
-COOKIE_DOMAIN=${{ secrets.PROD_COOKIE_DOMAIN }}
-SMTP_HOST=${{ secrets.SMTP_HOST }}
-SMTP_PORT=${{ secrets.SMTP_PORT }}
-SMTP_USER=${{ secrets.SMTP_USER }}
-SMTP_PASS=${{ secrets.SMTP_PASS }}
-EMAIL_FROM_NAME="Intern Infotech Engineering Academy"
-EMAIL_FROM_ADDRESS="${{ secrets.EMAIL_FROM_ADDRESS }}"
-CLOUDINARY_CLOUD_NAME=${{ secrets.CLOUDINARY_CLOUD_NAME }}
-CLOUDINARY_API_KEY=${{ secrets.CLOUDINARY_API_KEY }}
-CLOUDINARY_API_SECRET=${{ secrets.CLOUDINARY_API_SECRET }}
-EOF
+              {
+                echo "NODE_ENV=production"
+                echo "DATABASE_URL=${{ secrets.PROD_DATABASE_URL }}"
+                echo "REDIS_URL=${{ secrets.PROD_REDIS_URL }}"
+                echo "JWT_ACCESS_SECRET=${{ secrets.JWT_ACCESS_SECRET }}"
+                echo "JWT_REFRESH_SECRET=${{ secrets.JWT_REFRESH_SECRET }}"
+                echo "JWT_VERIFY_SECRET=${{ secrets.JWT_VERIFY_SECRET }}"
+                echo "JWT_RESET_SECRET=${{ secrets.JWT_RESET_SECRET }}"
+                echo "CLIENT_ORIGIN=${{ secrets.PROD_CLIENT_ORIGIN }}"
+                echo "PUBLIC_API_URL=${{ secrets.PROD_PUBLIC_API_URL }}"
+                echo "COOKIE_SECURE=false"
+                echo "COOKIE_SAME_SITE=lax"
+                echo "COOKIE_DOMAIN=${{ secrets.PROD_COOKIE_DOMAIN }}"
+                echo "SMTP_HOST=${{ secrets.SMTP_HOST }}"
+                echo "SMTP_PORT=${{ secrets.SMTP_PORT }}"
+                echo "SMTP_USER=${{ secrets.SMTP_USER }}"
+                echo "SMTP_PASS=${{ secrets.SMTP_PASS }}"
+                echo "EMAIL_FROM_NAME=\"Intern Infotech Engineering Academy\""
+                echo "EMAIL_FROM_ADDRESS=\"${{ secrets.EMAIL_FROM_ADDRESS }}\""
+                echo "CLOUDINARY_CLOUD_NAME=${{ secrets.CLOUDINARY_CLOUD_NAME }}"
+                echo "CLOUDINARY_API_KEY=${{ secrets.CLOUDINARY_API_KEY }}"
+                echo "CLOUDINARY_API_SECRET=${{ secrets.CLOUDINARY_API_SECRET }}"
+              } > .env
             fi
 
             # Detect docker-compose or docker compose
@@ -122,4 +122,3 @@ EOF
             sleep 5
             curl -f http://localhost/nginx-health || exit 1
             echo "Deployment to AWS EC2 finished successfully!"
-
