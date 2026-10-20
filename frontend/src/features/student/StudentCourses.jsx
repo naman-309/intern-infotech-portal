@@ -1,12 +1,22 @@
 import React from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
+import api from '../../lib/api';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Calendar, Clock, BookOpen, User, CheckCircle } from 'lucide-react';
 
 export const StudentCourses = () => {
   const { user } = useAuth();
-  const enrollments = user?.studentProfile?.enrollments || [];
+
+  const { data: meData } = useQuery({
+    queryKey: ['studentProfileMe', user?.id],
+    queryFn: () => api.get('/auth/me'),
+    staleTime: 60000,
+  });
+
+  const freshUser = meData?.data?.user || user;
+  const enrollments = freshUser?.studentProfile?.enrollments || user?.studentProfile?.enrollments || [];
 
   return (
     <div className="space-y-6">

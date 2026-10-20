@@ -22,9 +22,17 @@ import {
 
 export const StudentDashboard = () => {
   const { user } = useAuth();
-  const studentProfile = user?.studentProfile;
 
-  // Consolidated parallel data fetching with Promise.all() to eliminate waterfalls
+  const { data: meData } = useQuery({
+    queryKey: ['studentProfileMe', user?.id],
+    queryFn: () => api.get('/auth/me'),
+    staleTime: 60000,
+  });
+
+  const freshUser = meData?.data?.user || user;
+  const studentProfile = freshUser?.studentProfile || user?.studentProfile;
+  const enrollments = studentProfile?.enrollments || [];
+
   const { data: dashboardData, isLoading } = useQuery({
     queryKey: ['studentDashboard', user?.id],
     queryFn: async () => {
@@ -40,11 +48,10 @@ export const StudentDashboard = () => {
         fees: feesRes?.data?.data || feesRes?.data || {},
       };
     },
-    staleTime: 1200000, // 20 minutes (leverages Upstash Redis caching)
+    staleTime: 60000,
     refetchOnWindowFocus: false,
   });
 
-  const enrollments = studentProfile?.enrollments || [];
   const recentTests = dashboardData?.progress?.recentTests || [];
   const progressSummary = dashboardData?.progress?.summary || { totalTests: 0, averageScore: 0, averagePercentage: 0 };
   const announcements = dashboardData?.announcements || [];
@@ -82,13 +89,12 @@ export const StudentDashboard = () => {
 
           <div className="flex flex-col items-start md:items-end gap-2 shrink-0">
             <div className="px-3.5 py-2 rounded-2xl bg-slate-950/80 border border-slate-800 flex items-center gap-3">
-              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
+              <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
               <div className="text-right">
-                <div className="text-[10px] text-slate-500 font-mono uppercase">System Lead</div>
-                <div className="text-xs font-bold text-sky-300 font-mono">dev@nkkr</div>
+                <div className="text-[10px] text-slate-500 font-mono uppercase">Enrolled Programs</div>
+                <div className="text-xs font-bold text-sky-300 font-mono">{enrollments.length} Active Cohorts</div>
               </div>
             </div>
-            <span className="text-[11px] text-slate-500 font-mono">Cache Strategy: 30m TTL</span>
           </div>
         </div>
       </div>
