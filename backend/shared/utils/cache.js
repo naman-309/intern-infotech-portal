@@ -186,7 +186,56 @@ const cacheMiddleware = ({ prefix = 'api', ttl = 1800, keyGenerator } = {}) => {
   };
 };
 
+const redisClient = {
+  get: getCache,
+  set: setCache,
+  del: async (...keys) => {
+    if (!isRedisAvailable || !cacheClient) return 0;
+    try {
+      let totalDeleted = 0;
+      for (const k of keys) {
+        if (!k) continue;
+        // Direct key deletion
+        try {
+          await cacheClient.del(k);
+          totalDeleted++;
+        } catch (e) {
+          // ignore individual error
+        }
+
+        // Namespace pattern scan: e.g. cache:registrations:* or cache:users:* or *student:profile*
+        const patterns = [
+          `cache:${k}:*`,
+          k.includes('*') ? k : `*${k}*`,
+        ];
+
+        for (const pattern of patterns) {
+          try {
+            let cursor = '0';
+            do {
+              const [nextCursor, matchedKeys] = await cacheClient.scan(cursor, 'MATCH', pattern, 'COUNT', 100);
+              cursor = nextCursor;
+              if (matchedKeys && matchedKeys.length > 0) {
+                await cacheClient.del(...matchedKeys);
+                totalDeleted += matchedKeys.length;
+              }
+            } while (cursor !== '0');
+          } catch (e) {
+            // ignore scan error
+          }
+        }
+      }
+      return totalDeleted;
+    } catch (err) {
+      console.warn('[RedisCache] redisClient.del failed:', err.message);
+      return 0;
+    }
+  },
+  client: cacheClient,
+};
+
 module.exports = {
+  redisClient,
   getCache,
   setCache,
   delCache,
