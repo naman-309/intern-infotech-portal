@@ -5,14 +5,14 @@ const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
 const { config, errorHandler } = require('@portal/shared');
 
-const courseRoutes = require('./routes/courseRoutes');
-const batchRoutes = require('./routes/batchRoutes');
-const examRoutes = require('./routes/examRoutes');
-const resultRoutes = require('./routes/resultRoutes');
-const successStoryRoutes = require('./routes/successStoryRoutes');
-const feeRoutes = require('./routes/feeRoutes');
-const publicRoutes = require('./routes/publicRoutes');
-const mockInterviewRoutes = require('./routes/mockInterviewRoutes');
+const courseRoutes = require('./modules/course/course.routes');
+const batchRoutes = require('./modules/batch/batch.routes');
+const examRoutes = require('./modules/exam/exam.routes');
+const resultRoutes = require('./modules/result/result.routes');
+const successStoryRoutes = require('./modules/success-story/success-story.routes');
+const feeRoutes = require('./modules/fee/fee.routes');
+const publicRoutes = require('./modules/public-cms/public-cms.routes');
+const mockInterviewRoutes = require('./modules/mock-interview/mock-interview.routes');
 
 const app = express();
 app.set('trust proxy', 1);

@@ -4,7 +4,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
 const { config, errorHandler } = require('@portal/shared');
-const authRoutes = require('./routes/authRoutes');
+const authRoutes = require('./modules/auth/auth.routes');
 
 const app = express();
 app.set('trust proxy', 1);

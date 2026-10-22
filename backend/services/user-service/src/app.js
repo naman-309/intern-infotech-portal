@@ -5,10 +5,10 @@ const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
 const { config, errorHandler } = require('@portal/shared');
 
-const userRoutes = require('./routes/userRoutes');
-const registrationRoutes = require('./routes/registrationRoutes');
-const eligibleEmailRoutes = require('./routes/eligibleEmailRoutes');
-const auditLogRoutes = require('./routes/auditLogRoutes');
+const userRoutes = require('./modules/user/user.routes');
+const registrationRoutes = require('./modules/registration/registration.routes');
+const eligibleEmailRoutes = require('./modules/eligible-email/eligible-email.routes');
+const auditLogRoutes = require('./modules/audit-log/audit-log.routes');
 
 const app = express();
 app.set('trust proxy', 1);

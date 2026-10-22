@@ -4,7 +4,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
 const { config, errorHandler, initEmailSubscriber } = require('@portal/shared');
-const announcementRoutes = require('./routes/announcementRoutes');
+const announcementRoutes = require('./modules/announcement/announcement.routes');
 
 
 const app = express();

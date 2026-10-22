@@ -124,6 +124,8 @@ const optionalAuth = async (req, res, next) => {
 
 module.exports = {
   authenticate,
+  authenticateUser: authenticate,
   requireRole,
+  authorizeRoles: requireRole,
   optionalAuth,
 };
