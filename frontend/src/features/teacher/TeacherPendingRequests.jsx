@@ -2,13 +2,12 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../lib/api';
 import { formatDate } from '../../lib/utils';
-import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
-import { Badge } from '../../components/ui/Badge';
-import { Modal } from '../../components/ui/Modal';
-import { Input } from '../../components/ui/Input';
-import { Select } from '../../components/ui/Select';
-import { Skeleton } from '../../components/ui/Skeleton';
+import {
+  GlassPanel,
+  GlassButton,
+  GlassBadge,
+  GlassModal,
+} from '../../components/ui';
 import { Check, X, FileCheck2, Mail, Phone, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -69,21 +68,21 @@ export const TeacherPendingRequests = () => {
       </div>
 
       {isLoading ? (
-        <Skeleton className="h-64 w-full" />
+        <div className="h-64 w-full rounded-2xl bg-white/[0.03] animate-pulse border border-white/10" />
       ) : requests.length === 0 ? (
-        <Card className="p-12 text-center text-slate-500 text-xs">
+        <GlassPanel className="p-12 text-center text-slate-400 text-xs">
           No pending student admission requests awaiting review.
-        </Card>
+        </GlassPanel>
       ) : (
         <div className="space-y-4">
           {requests.map((req) => (
-            <Card key={req.id} className="p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="space-y-1.5">
+            <GlassPanel key={req.id} variant="default" className="p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-2">
                 <div className="flex items-center gap-3">
                   <h3 className="text-base font-bold text-white">{req.fullName}</h3>
-                  <Badge variant={req.isEmailVerified ? 'success' : 'warning'}>
+                  <GlassBadge variant={req.isEmailVerified ? 'success' : 'warning'}>
                     {req.isEmailVerified ? 'Email Verified' : 'Email Pending'}
-                  </Badge>
+                  </GlassBadge>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-4 text-xs text-slate-400 font-mono">
@@ -100,103 +99,92 @@ export const TeacherPendingRequests = () => {
               </div>
 
               <div className="flex items-center gap-2">
-                <Button
+                <GlassButton
+                  variant="primary"
                   size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    setSelectedRequest(req);
-                    setReviewAction('REJECT');
-                    setReviewNote('');
-                  }}
-                  className="gap-1.5 text-rose-400 border-rose-500/30 hover:bg-rose-500/10 text-xs"
-                >
-                  <X className="w-3.5 h-3.5" /> Reject
-                </Button>
-
-                <Button
-                  size="sm"
-                  variant="success"
                   onClick={() => {
                     setSelectedRequest(req);
                     setReviewAction('APPROVE');
-                    setReviewNote('Offline admission verified.');
-                    setAssignedBatchId(batches[0]?.id || '');
                   }}
-                  className="gap-1.5 text-xs"
+                  className="gap-1.5"
                 >
-                  <Check className="w-3.5 h-3.5" /> Approve & Activate
-                </Button>
+                  <Check className="w-4 h-4" /> Approve Admission
+                </GlassButton>
+                <GlassButton
+                  variant="danger"
+                  size="sm"
+                  onClick={() => {
+                    setSelectedRequest(req);
+                    setReviewAction('REJECT');
+                  }}
+                  className="gap-1.5"
+                >
+                  <X className="w-4 h-4" /> Reject
+                </GlassButton>
               </div>
-            </Card>
+            </GlassPanel>
           ))}
         </div>
       )}
 
-      {/* REVIEW CONFIRMATION MODAL */}
+      {/* Review Modal */}
       {selectedRequest && (
-        <Modal
+        <GlassModal
           isOpen={!!selectedRequest}
           onClose={() => setSelectedRequest(null)}
-          title={reviewAction === 'APPROVE' ? 'Approve Student Registration' : 'Reject Registration Request'}
-          description={`Student: ${selectedRequest.fullName} (${selectedRequest.email})`}
+          title={reviewAction === 'APPROVE' ? 'Approve Student Admission' : 'Reject Registration Request'}
+          description={`Applicant: ${selectedRequest.fullName} (${selectedRequest.email})`}
         >
           <div className="space-y-4">
-            {reviewAction === 'APPROVE' ? (
-              <>
-                <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">
-                    Assign to Initial Batch (Optional)
-                  </label>
-                  <Select value={assignedBatchId} onChange={(e) => setAssignedBatchId(e.target.value)}>
-                    <option value="">No immediate batch assignment</option>
-                    {batches.map((b) => (
-                      <option key={b.id} value={b.id}>
-                        {b.name} ({b.batchCode})
-                      </option>
-                    ))}
-                  </Select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">Approval Note</label>
-                  <Input
-                    placeholder="e.g. Offline fee verified, enrolled into morning cohort."
-                    value={reviewNote}
-                    onChange={(e) => setReviewNote(e.target.value)}
-                  />
-                </div>
-              </>
-            ) : (
+            {reviewAction === 'APPROVE' && (
               <div>
                 <label className="block text-xs font-medium text-slate-300 mb-1">
-                  Reason for Rejection (Included in student notification email)
+                  Assign to Offline Laboratory Batch (Optional)
                 </label>
-                <textarea
-                  rows={3}
-                  required
-                  placeholder="e.g. Offline admission enrollment record not found in electronic registry."
-                  value={reviewNote}
-                  onChange={(e) => setReviewNote(e.target.value)}
-                  className="flex w-full rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-rose-500"
-                />
+                <select
+                  value={assignedBatchId}
+                  onChange={(e) => setAssignedBatchId(e.target.value)}
+                  className="w-full h-10 px-3.5 py-2 bg-[#080B14] border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500"
+                >
+                  <option value="">Do not assign batch immediately</option>
+                  {batches.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name} ({b.batchCode}) - {b.course?.title}
+                    </option>
+                  ))}
+                </select>
               </div>
             )}
 
-            <div className="pt-4 border-t border-slate-800 flex justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={() => setSelectedRequest(null)}>
+            <div>
+              <label className="block text-xs font-medium text-slate-300 mb-1">Review Notes / Remarks</label>
+              <textarea
+                rows={3}
+                placeholder="Internal verification notes or reason for approval/rejection..."
+                value={reviewNote}
+                onChange={(e) => setReviewNote(e.target.value)}
+                className="w-full px-3.5 py-2 bg-white/[0.04] border border-white/10 rounded-xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 resize-none"
+              />
+            </div>
+
+            <div className="pt-4 border-t border-white/10 flex justify-end gap-3">
+              <GlassButton variant="outline" size="sm" onClick={() => setSelectedRequest(null)}>
                 Cancel
-              </Button>
-              <Button
+              </GlassButton>
+              <GlassButton
+                variant={reviewAction === 'APPROVE' ? 'primary' : 'danger'}
                 size="sm"
-                variant={reviewAction === 'APPROVE' ? 'success' : 'danger'}
                 isLoading={reviewMutation.isPending}
                 onClick={() => reviewMutation.mutate()}
               >
                 Confirm {reviewAction === 'APPROVE' ? 'Approval' : 'Rejection'}
-              </Button>
+              </GlassButton>
             </div>
           </div>
-        </Modal>
+        </GlassModal>
       )}
     </div>
   );
 };
+
+export default TeacherPendingRequests;

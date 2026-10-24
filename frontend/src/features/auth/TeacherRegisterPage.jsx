@@ -3,13 +3,16 @@ import { Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { motion } from 'motion/react';
 import api from '../../lib/api';
-import { Button } from '../../components/ui/Button';
-import { Input } from '../../components/ui/Input';
-import { Card, CardContent, CardFooter } from '../../components/ui/Card';
-import { Code2, Briefcase, Mail, ArrowRight, AlertCircle } from 'lucide-react';
+import { GlassButton, GlassCard3D, GlassBadge } from '../../components/ui';
+import { Code2, Mail, ArrowRight, AlertCircle, Briefcase, GraduationCap } from 'lucide-react';
 import { toast } from 'sonner';
-import { Logo } from '../../components/shared/Logo';
+import {
+  MagneticButton,
+  AnimatedBackground,
+  PageTransition,
+} from '../../components/motion';
 
 const teacherRegisterSchema = z.object({
   firstName: z.string().min(2, 'First name is required'),
@@ -47,11 +50,25 @@ export const TeacherRegisterPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col justify-center items-center px-4 py-12 relative overflow-hidden">
+    <PageTransition className="min-h-screen bg-[#05070D] flex flex-col justify-center items-center px-4 py-12 relative overflow-hidden">
+      <AnimatedBackground />
+
+      {/* Top Ambient Glow */}
+      <div className="pointer-events-none absolute top-1/4 left-1/2 -translate-x-1/2 w-96 h-96 bg-indigo-600/10 rounded-full blur-[120px]" />
+
       <div className="w-full max-w-lg space-y-6 relative z-10">
         <div className="text-center space-y-2">
-          <Link to="/" className="inline-flex flex-col items-center group mb-2 hover:opacity-90 transition-opacity">
-            <Logo textClassName="text-2xl sm:text-3xl" isDark={true} />
+          <Link to="/" className="inline-flex items-center gap-2 group">
+            <motion.div
+              whileHover={{ scale: 1.08, rotate: [0, -3, 3, 0] }}
+              transition={{ duration: 0.3 }}
+              className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-sky-400 flex items-center justify-center text-white shadow-lg shadow-indigo-600/30 border border-white/20"
+            >
+              <Code2 className="w-5 h-5" />
+            </motion.div>
+            <span className="text-xl font-bold text-white tracking-tight">
+              INTERN <span className="bg-gradient-to-r from-indigo-400 to-sky-300 bg-clip-text text-transparent">INFOTECH</span>
+            </span>
           </Link>
           <h2 className="text-2xl font-bold text-white tracking-tight">Faculty & Instructor Application</h2>
           <p className="text-xs text-slate-400 max-w-md mx-auto">
@@ -59,11 +76,11 @@ export const TeacherRegisterPage = () => {
           </p>
         </div>
 
-        <Card className="border-slate-800 bg-slate-900/90 shadow-2xl">
-          <CardContent className="p-6">
+        <GlassCard3D intensity={8} depth={20} className="shadow-glass-lg">
+          <div className="p-6">
             {isSuccess ? (
               <div className="text-center space-y-4 py-6">
-                <div className="w-14 h-14 rounded-full bg-indigo-500/10 text-indigo-400 flex items-center justify-center mx-auto border border-indigo-500/20">
+                <div className="w-14 h-14 rounded-2xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center mx-auto border border-indigo-500/30 shadow-glass-sm">
                   <Mail className="w-7 h-7" />
                 </div>
                 <h3 className="text-lg font-bold text-white">Application Received</h3>
@@ -72,16 +89,16 @@ export const TeacherRegisterPage = () => {
                 </p>
                 <div className="pt-2">
                   <Link to="/login">
-                    <Button variant="outline" className="w-full">
+                    <GlassButton variant="outline" className="w-full">
                       Return to Sign In
-                    </Button>
+                    </GlassButton>
                   </Link>
                 </div>
               </div>
             ) : (
               <>
                 {serverError && (
-                  <div className="mb-4 p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 flex items-start gap-2.5 text-xs text-rose-300">
+                  <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-start gap-2.5 text-xs text-rose-300">
                     <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
                     <span>{serverError}</span>
                   </div>
@@ -91,90 +108,128 @@ export const TeacherRegisterPage = () => {
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-medium text-slate-300 mb-1">First Name</label>
-                      <Input placeholder="e.g. Vikram" error={errors.firstName?.message} {...register('firstName')} />
+                      <input
+                        placeholder="e.g. Vikram"
+                        {...register('firstName')}
+                        className="w-full h-10 px-3.5 py-2 bg-white/[0.04] border border-white/10 rounded-xl text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
+                      />
+                      {errors.firstName && (
+                        <p className="text-[11px] text-rose-400 mt-1">{errors.firstName.message}</p>
+                      )}
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-slate-300 mb-1">Last Name</label>
-                      <Input placeholder="e.g. Sharma" error={errors.lastName?.message} {...register('lastName')} />
+                      <input
+                        placeholder="e.g. Sharma"
+                        {...register('lastName')}
+                        className="w-full h-10 px-3.5 py-2 bg-white/[0.04] border border-white/10 rounded-xl text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
+                      />
+                      {errors.lastName && (
+                        <p className="text-[11px] text-rose-400 mt-1">{errors.lastName.message}</p>
+                      )}
                     </div>
                   </div>
 
                   <div>
                     <label className="block text-xs font-medium text-slate-300 mb-1">Email Address</label>
-                    <Input
+                    <input
                       type="email"
                       placeholder="e.g. vikram.sharma@example.com"
-                      error={errors.email?.message}
                       {...register('email')}
+                      className="w-full h-10 px-3.5 py-2 bg-white/[0.04] border border-white/10 rounded-xl text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
                     />
+                    {errors.email && (
+                      <p className="text-[11px] text-rose-400 mt-1">{errors.email.message}</p>
+                    )}
                   </div>
 
                   <div>
                     <label className="block text-xs font-medium text-slate-300 mb-1">Contact Phone</label>
-                    <Input
+                    <input
                       type="tel"
                       placeholder="e.g. +91 98765 43210"
-                      error={errors.phone?.message}
                       {...register('phone')}
+                      className="w-full h-10 px-3.5 py-2 bg-white/[0.04] border border-white/10 rounded-xl text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
                     />
+                    {errors.phone && (
+                      <p className="text-[11px] text-rose-400 mt-1">{errors.phone.message}</p>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-medium text-slate-300 mb-1">Primary Specialization</label>
-                      <Input
+                      <label className="block text-xs font-medium text-slate-300 mb-1">Specialization</label>
+                      <input
                         placeholder="e.g. Distributed Systems"
-                        error={errors.specialization?.message}
                         {...register('specialization')}
+                        className="w-full h-10 px-3.5 py-2 bg-white/[0.04] border border-white/10 rounded-xl text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
                       />
+                      {errors.specialization && (
+                        <p className="text-[11px] text-rose-400 mt-1">{errors.specialization.message}</p>
+                      )}
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-slate-300 mb-1">Qualifications / Experience</label>
-                      <Input
+                      <label className="block text-xs font-medium text-slate-300 mb-1">Experience / Credentials</label>
+                      <input
                         placeholder="e.g. Ex-Staff Eng / M.Tech"
-                        error={errors.qualifications?.message}
                         {...register('qualifications')}
+                        className="w-full h-10 px-3.5 py-2 bg-white/[0.04] border border-white/10 rounded-xl text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
                       />
+                      {errors.qualifications && (
+                        <p className="text-[11px] text-rose-400 mt-1">{errors.qualifications.message}</p>
+                      )}
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-slate-300 mb-1">Brief Bio / Industry Background</label>
+                    <label className="block text-xs font-medium text-slate-300 mb-1">Industry Background (Optional)</label>
                     <textarea
                       rows={2}
-                      placeholder="Summarize your hands-on engineering background..."
-                      className="flex w-full rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-indigo-500"
+                      placeholder="Summarize your systems or software background…"
                       {...register('bio')}
+                      className="w-full px-3.5 py-2 bg-white/[0.04] border border-white/10 rounded-xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 transition-colors resize-none"
                     />
                   </div>
 
                   <div>
                     <label className="block text-xs font-medium text-slate-300 mb-1">Create Password</label>
-                    <Input
+                    <input
                       type="password"
                       placeholder="Min 8 characters"
-                      error={errors.password?.message}
                       {...register('password')}
+                      className="w-full h-10 px-3.5 py-2 bg-white/[0.04] border border-white/10 rounded-xl text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
                     />
+                    {errors.password && (
+                      <p className="text-[11px] text-rose-400 mt-1">{errors.password.message}</p>
+                    )}
                   </div>
 
-                  <Button type="submit" isLoading={isSubmitting} className="w-full gap-2 mt-2">
-                    Submit Faculty Application
-                    <ArrowRight className="w-4 h-4" />
-                  </Button>
+                  <MagneticButton className="w-full">
+                    <GlassButton
+                      type="submit"
+                      variant="primary"
+                      isLoading={isSubmitting}
+                      className="w-full gap-2 mt-2"
+                    >
+                      Submit Faculty Application
+                      <ArrowRight className="w-4 h-4" />
+                    </GlassButton>
+                  </MagneticButton>
                 </form>
               </>
             )}
-          </CardContent>
+          </div>
 
-          <CardFooter className="px-6 py-4 bg-slate-950/40 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
+          <div className="px-6 py-4 bg-white/[0.02] border-t border-white/10 flex items-center justify-between text-xs text-slate-400">
             <span>Already have faculty credentials?</span>
-            <Link to="/login" className="text-indigo-400 hover:underline font-semibold">
+            <Link to="/login" className="text-indigo-400 hover:text-indigo-300 font-semibold transition-colors">
               Sign In
             </Link>
-          </CardFooter>
-        </Card>
+          </div>
+        </GlassCard3D>
       </div>
-    </div>
+    </PageTransition>
   );
 };
+
+export default TeacherRegisterPage;

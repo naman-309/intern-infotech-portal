@@ -5,6 +5,14 @@ export function cn(...inputs) {
   return twMerge(clsx(inputs));
 }
 
+// Ensure cn is globally available across all execution contexts
+if (typeof window !== 'undefined') {
+  window.cn = cn;
+}
+if (typeof globalThis !== 'undefined') {
+  globalThis.cn = cn;
+}
+
 export function formatCurrency(amount) {
   return new Intl.NumberFormat('en-IN', {
     style: 'currency',

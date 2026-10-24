@@ -5,14 +5,13 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import api from '../../lib/api';
 import { formatDate } from '../../lib/utils';
-import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
-import { Input } from '../../components/ui/Input';
-import { Select } from '../../components/ui/Select';
-import { Badge } from '../../components/ui/Badge';
-import { Modal } from '../../components/ui/Modal';
+import {
+  GlassPanel,
+  GlassButton,
+  GlassBadge,
+  GlassModal,
+} from '../../components/ui';
 import { MarksEntryModal } from './MarksEntryModal';
-import { Skeleton } from '../../components/ui/Skeleton';
 import { Plus, ClipboardList, CheckCircle2, History, Edit3, Send } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -96,47 +95,47 @@ export const TeacherExams = () => {
           </p>
         </div>
 
-        <Button onClick={() => setCreateModalOpen(true)} className="gap-2">
+        <GlassButton variant="primary" onClick={() => setCreateModalOpen(true)} className="gap-2">
           <Plus className="w-4 h-4" /> Create Offline Examination
-        </Button>
+        </GlassButton>
       </div>
 
       {isLoading ? (
-        <Skeleton className="h-64 w-full" />
+        <div className="h-64 w-full rounded-2xl bg-white/[0.03] animate-pulse border border-white/10" />
       ) : exams.length === 0 ? (
-        <Card className="p-12 text-center text-slate-500 text-xs">
+        <GlassPanel className="p-12 text-center text-slate-400 text-xs">
           No offline examinations created yet. Click the button above to schedule a laboratory test.
-        </Card>
+        </GlassPanel>
       ) : (
         <div className="space-y-4">
           {exams.map((exam) => (
-            <Card key={exam.id} className="p-6 space-y-4">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+            <GlassPanel key={exam.id} variant="default" className="p-6 space-y-4">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-white/10">
                 <div>
                   <div className="flex items-center gap-3">
                     <h3 className="text-lg font-bold text-white">{exam.title}</h3>
-                    <Badge variant={exam.status === 'PUBLISHED' ? 'success' : 'default'}>
+                    <GlassBadge variant={exam.status === 'PUBLISHED' ? 'success' : 'default'}>
                       {exam.status}
-                    </Badge>
+                    </GlassBadge>
                   </div>
-                  <div className="text-xs text-indigo-400 font-mono mt-1">
-                    Subject: {exam.subject} • Batch: {exam.batch.name} ({exam.batch.batchCode})
+                  <div className="text-xs text-indigo-300 font-mono mt-1">
+                    Subject: {exam.subject} • Batch: {exam.batch?.name} ({exam.batch?.batchCode})
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <Button
+                  <GlassButton
                     variant="outline"
                     size="sm"
                     onClick={() => setSelectedExamForMarks(exam)}
-                    className="gap-1.5 text-xs border-indigo-500/40 text-indigo-300 hover:bg-indigo-500/10"
+                    className="gap-1.5 text-xs text-indigo-300 border-indigo-500/30"
                   >
                     <Edit3 className="w-3.5 h-3.5" />
                     Enter / Edit Marks
-                  </Button>
+                  </GlassButton>
 
                   {exam.status === 'DRAFT' && (
-                    <Button
+                    <GlassButton
                       variant="primary"
                       size="sm"
                       isLoading={publishMutation.isPending && publishMutation.variables === exam.id}
@@ -145,7 +144,7 @@ export const TeacherExams = () => {
                     >
                       <Send className="w-3.5 h-3.5" />
                       Publish Results
-                    </Button>
+                    </GlassButton>
                   )}
                 </div>
               </div>
@@ -165,22 +164,22 @@ export const TeacherExams = () => {
                 </div>
                 <div>
                   <div className="text-slate-500 uppercase text-[10px]">Created By</div>
-                  <div className="text-sm text-slate-300 mt-0.5">{exam.createdBy?.firstName} {exam.createdBy?.lastName}</div>
+                  <div className="text-sm text-slate-300 mt-0.5">{exam.createdBy?.name || `${exam.createdBy?.firstName || ''} ${exam.createdBy?.lastName || ''}`.trim()}</div>
                 </div>
               </div>
 
               {exam.description && (
-                <div className="text-xs text-slate-400 bg-slate-950 p-3 rounded-lg border border-slate-800">
+                <div className="text-xs text-slate-300 bg-white/[0.03] p-3.5 rounded-xl border border-white/10">
                   {exam.description}
                 </div>
               )}
-            </Card>
+            </GlassPanel>
           ))}
         </div>
       )}
 
       {/* CREATE EXAM MODAL */}
-      <Modal
+      <GlassModal
         isOpen={createModalOpen}
         onClose={() => setCreateModalOpen(false)}
         title="Schedule New Offline Examination"
@@ -189,35 +188,71 @@ export const TeacherExams = () => {
         <form onSubmit={handleSubmit(onCreateExam)} className="space-y-4">
           <div>
             <label className="block text-xs font-medium text-slate-300 mb-1">Test Title</label>
-            <Input placeholder="e.g. Distributed Consensus Lab Exam" error={errors.title?.message} {...register('title')} />
+            <input
+              placeholder="e.g. Distributed Consensus Lab Exam"
+              {...register('title')}
+              className="w-full h-10 px-3.5 py-2 bg-white/[0.04] border border-white/10 rounded-xl text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500"
+            />
+            {errors.title && (
+              <p className="text-[11px] text-rose-400 mt-1">{errors.title.message}</p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1">Subject / Domain</label>
-              <Input placeholder="e.g. Raft & Database Internals" error={errors.subject?.message} {...register('subject')} />
+              <input
+                placeholder="e.g. Raft & Database Internals"
+                {...register('subject')}
+                className="w-full h-10 px-3.5 py-2 bg-white/[0.04] border border-white/10 rounded-xl text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500"
+              />
+              {errors.subject && (
+                <p className="text-[11px] text-rose-400 mt-1">{errors.subject.message}</p>
+              )}
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1">Assigned Batch</label>
-              <Select error={errors.batchId?.message} {...register('batchId')}>
+              <select
+                {...register('batchId')}
+                className="w-full h-10 px-3.5 py-2 bg-[#080B14] border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500"
+              >
                 <option value="">Select Batch...</option>
                 {batches.map((b) => (
                   <option key={b.id} value={b.id}>
                     {b.name} ({b.batchCode})
                   </option>
                 ))}
-              </Select>
+              </select>
+              {errors.batchId && (
+                <p className="text-[11px] text-rose-400 mt-1">{errors.batchId.message}</p>
+              )}
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1">Exam Date</label>
-              <Input type="date" error={errors.examDate?.message} {...register('examDate')} />
+              <input
+                type="date"
+                {...register('examDate')}
+                className="w-full h-10 px-3.5 py-2 bg-white/[0.04] border border-white/10 rounded-xl text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500"
+              />
+              {errors.examDate && (
+                <p className="text-[11px] text-rose-400 mt-1">{errors.examDate.message}</p>
+              )}
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1">Maximum Marks</label>
-              <Input type="number" step="0.5" placeholder="100" error={errors.maxMarks?.message} {...register('maxMarks')} />
+              <input
+                type="number"
+                step="0.5"
+                placeholder="100"
+                {...register('maxMarks')}
+                className="w-full h-10 px-3.5 py-2 bg-white/[0.04] border border-white/10 rounded-xl text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500"
+              />
+              {errors.maxMarks && (
+                <p className="text-[11px] text-rose-400 mt-1">{errors.maxMarks.message}</p>
+              )}
             </div>
           </div>
 
@@ -226,21 +261,21 @@ export const TeacherExams = () => {
             <textarea
               rows={2}
               placeholder="e.g. 3-hour supervised implementation test..."
-              className="flex w-full rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-indigo-500"
               {...register('description')}
+              className="w-full px-3.5 py-2 bg-white/[0.04] border border-white/10 rounded-xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 resize-none"
             />
           </div>
 
           <div className="pt-2 flex justify-end gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => setCreateModalOpen(false)}>
+            <GlassButton type="button" variant="outline" size="sm" onClick={() => setCreateModalOpen(false)}>
               Cancel
-            </Button>
-            <Button type="submit" size="sm" isLoading={isSubmitting}>
+            </GlassButton>
+            <GlassButton type="submit" variant="primary" size="sm" isLoading={isSubmitting}>
               Create Examination
-            </Button>
+            </GlassButton>
           </div>
         </form>
-      </Modal>
+      </GlassModal>
 
       {/* MARKS ENTRY MODAL */}
       {selectedExamForMarks && (
@@ -253,3 +288,5 @@ export const TeacherExams = () => {
     </div>
   );
 };
+
+export default TeacherExams;

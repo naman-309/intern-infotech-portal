@@ -3,16 +3,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { motion, AnimatePresence } from 'motion/react';
 import api from '../../lib/api';
 import { formatDate } from '../../lib/utils';
-import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
-import { Input } from '../../components/ui/Input';
-import { Select } from '../../components/ui/Select';
-import { Badge } from '../../components/ui/Badge';
-import { Modal } from '../../components/ui/Modal';
-import { Skeleton } from '../../components/ui/Skeleton';
-import { Plus, Users, UserPlus, Calendar, Clock, Trash2 } from 'lucide-react';
+import { GlassPanel } from '../../components/ui/GlassPanel';
+import { GlassBadge } from '../../components/ui/GlassBadge';
+import { GlassButton } from '../../components/ui/GlassButton';
+import { GlassModal } from '../../components/ui/GlassModal';
+import { Plus, Users, UserPlus, Calendar, Clock, Trash2, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 
 const batchSchema = z.object({
@@ -34,7 +32,6 @@ export const AdminBatches = () => {
 
   const [selectedTeacherId, setSelectedTeacherId] = useState('');
   const [selectedStudentId, setSelectedStudentId] = useState('');
-  const [enrollDiscountAmount, setEnrollDiscountAmount] = useState(0);
 
   // 1. Fetch Batches
   const { data: batchesData, isLoading } = useQuery({
@@ -103,24 +100,16 @@ export const AdminBatches = () => {
 
   const onEnrollStudent = async () => {
     try {
-      if (!selectedStudentId) {
-        toast.error('Please select a student to enroll');
-        return;
-      }
-      const disc = Math.max(0, parseFloat(enrollDiscountAmount) || 0);
+      if (!selectedStudentId) return;
       await api.post(`/batches/${selectedBatch.id}/enrollments`, {
         studentId: selectedStudentId,
-        discountAmount: disc,
       });
       queryClient.invalidateQueries({ queryKey: ['adminBatches'] });
-      queryClient.invalidateQueries({ queryKey: ['adminStudents'] });
-      queryClient.invalidateQueries({ queryKey: ['adminFees'] });
       toast.success('Student enrolled into batch successfully');
       setEnrollStudentModalOpen(false);
       setSelectedStudentId('');
-      setEnrollDiscountAmount(0);
     } catch (err) {
-      toast.error(err.response?.data?.message || err.message || 'Failed to enroll student');
+      toast.error(err.message || 'Failed to enroll student');
     }
   };
 
@@ -128,99 +117,117 @@ export const AdminBatches = () => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-white tracking-tight">Batches & Cohort Rosters</h2>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full glass-pill border border-brand-cyan/25 text-[11px] font-mono tracking-wider text-brand-cyan mb-2">
+            <Sparkles className="w-3.5 h-3.5" />
+            LABORATORY COHORTS
+          </div>
+          <h2 className="text-3xl font-extrabold text-white tracking-tight">Batches & Cohort Rosters</h2>
           <p className="text-xs text-slate-400 mt-1">
             Create laboratory cohorts, assign faculty instructors, and enroll students.
           </p>
         </div>
 
-        <Button onClick={() => setCreateModalOpen(true)} className="gap-2">
+        <GlassButton variant="primary" onClick={() => setCreateModalOpen(true)} className="gap-2">
           <Plus className="w-4 h-4" /> Create New Batch
-        </Button>
+        </GlassButton>
       </div>
 
       {isLoading ? (
-        <Skeleton className="h-64 w-full" />
+        <div className="space-y-4">
+          {[1, 2, 3].map((n) => (
+            <GlassPanel key={n} className="p-6 h-36 animate-pulse" />
+          ))}
+        </div>
       ) : batches.length === 0 ? (
-        <Card className="p-12 text-center text-slate-500 text-xs">
+        <GlassPanel className="p-16 text-center text-slate-400 text-xs font-mono">
           No batches found. Create your first batch to start assigning teachers and enrolling students.
-        </Card>
+        </GlassPanel>
       ) : (
         <div className="space-y-4">
-          {batches.map((batch) => (
-            <Card key={batch.id} className="p-6 space-y-4">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-800">
-                <div>
-                  <div className="flex items-center gap-3">
-                    <h3 className="text-lg font-bold text-white">{batch.name}</h3>
-                    <Badge variant="primary">{batch.batchCode}</Badge>
-                    <Badge variant={batch.status === 'ONGOING' ? 'success' : 'default'}>
-                      {batch.status}
-                    </Badge>
-                  </div>
-                  <div className="text-xs text-indigo-300 font-medium mt-1">
-                    Course: {batch.course.title}
-                  </div>
-                </div>
+          <AnimatePresence>
+            {batches.map((batch, idx) => (
+              <motion.div
+                key={batch.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.25, delay: idx * 0.04 }}
+              >
+                <GlassPanel glow="cyan" className="p-6 space-y-4">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-white/5">
+                    <div>
+                      <div className="flex items-center gap-3">
+                        <h3 className="text-lg font-bold text-white tracking-tight">{batch.name}</h3>
+                        <GlassBadge variant="cyan">{batch.batchCode}</GlassBadge>
+                        <GlassBadge variant={batch.status === 'ONGOING' ? 'success' : 'default'}>
+                          {batch.status}
+                        </GlassBadge>
+                      </div>
+                      <div className="text-xs text-brand-cyan font-medium mt-1 font-mono">
+                        Course: {batch.course.title}
+                      </div>
+                    </div>
 
-                <div className="flex items-center gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      setSelectedBatch(batch);
-                      setAssignTeacherModalOpen(true);
-                    }}
-                    className="text-xs gap-1.5"
-                  >
-                    <UserPlus className="w-3.5 h-3.5" /> Assign Teacher
-                  </Button>
+                    <div className="flex items-center gap-2">
+                      <GlassButton
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => {
+                          setSelectedBatch(batch);
+                          setAssignTeacherModalOpen(true);
+                        }}
+                        className="text-xs gap-1.5"
+                      >
+                        <UserPlus className="w-3.5 h-3.5" /> Assign Teacher
+                      </GlassButton>
 
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => {
-                      setSelectedBatch(batch);
-                      setEnrollStudentModalOpen(true);
-                    }}
-                    className="text-xs gap-1.5"
-                  >
-                    <Users className="w-3.5 h-3.5" /> Enroll Student
-                  </Button>
-                </div>
-              </div>
+                      <GlassButton
+                        size="sm"
+                        variant="primary"
+                        onClick={() => {
+                          setSelectedBatch(batch);
+                          setEnrollStudentModalOpen(true);
+                        }}
+                        className="text-xs gap-1.5"
+                      >
+                        <Users className="w-3.5 h-3.5" /> Enroll Student
+                      </GlassButton>
+                    </div>
+                  </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs font-mono">
-                <div>
-                  <div className="text-slate-500 uppercase text-[10px]">Start Date</div>
-                  <div className="text-sm text-slate-200 mt-0.5">{formatDate(batch.startDate)}</div>
-                </div>
-                <div>
-                  <div className="text-slate-500 uppercase text-[10px]">Schedule</div>
-                  <div className="text-sm text-slate-200 mt-0.5">{batch.timing || 'Offline Lab'}</div>
-                </div>
-                <div>
-                  <div className="text-slate-500 uppercase text-[10px]">Enrollment Count</div>
-                  <div className="text-sm font-bold text-emerald-400 mt-0.5">
-                    {batch._count?.enrollments || 0} / {batch.capacity} Students
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs font-mono">
+                    <div>
+                      <div className="text-slate-500 uppercase text-[10px]">Start Date</div>
+                      <div className="text-sm text-slate-200 mt-0.5">{formatDate(batch.startDate)}</div>
+                    </div>
+                    <div>
+                      <div className="text-slate-500 uppercase text-[10px]">Schedule</div>
+                      <div className="text-sm text-slate-200 mt-0.5">{batch.timing || 'Offline Lab'}</div>
+                    </div>
+                    <div>
+                      <div className="text-slate-500 uppercase text-[10px]">Enrollment Count</div>
+                      <div className="text-sm font-bold text-emerald-400 mt-0.5">
+                        {batch._count?.enrollments || 0} / {batch.capacity} Students
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-slate-500 uppercase text-[10px]">Instructors</div>
+                      <div className="text-sm text-brand-cyan mt-0.5">
+                        {batch.teachers && batch.teachers.length > 0
+                          ? batch.teachers.map((t) => t.teacher?.user?.lastName).join(', ')
+                          : 'None assigned'}
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div>
-                  <div className="text-slate-500 uppercase text-[10px]">Instructors</div>
-                  <div className="text-sm text-indigo-400 mt-0.5">
-                    {batch.teachers && batch.teachers.length > 0
-                      ? batch.teachers.map((t) => t.teacher?.user?.lastName).join(', ')
-                      : 'None assigned'}
-                  </div>
-                </div>
-              </div>
-            </Card>
-          ))}
+                </GlassPanel>
+              </motion.div>
+            ))}
+          </AnimatePresence>
         </div>
       )}
 
       {/* CREATE BATCH MODAL */}
-      <Modal
+      <GlassModal
         isOpen={createModalOpen}
         onClose={() => setCreateModalOpen(false)}
         title="Create New Offline Batch"
@@ -228,58 +235,97 @@ export const AdminBatches = () => {
       >
         <form onSubmit={handleSubmit(onCreateBatch)} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1">Batch Name</label>
-            <Input placeholder="e.g. Full Stack Cohort 2026-Beta" error={errors.name?.message} {...register('name')} />
+            <label className="block text-xs font-medium text-slate-300 mb-1.5 font-mono">Batch Name</label>
+            <input
+              placeholder="e.g. Full Stack Cohort 2026-Beta"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.03] border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-blue/50"
+              {...register('name')}
+            />
+            {errors.name?.message && (
+              <span className="text-[11px] text-red-400 mt-1 block">{errors.name.message}</span>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">Batch Code</label>
-              <Input placeholder="e.g. FS-2026-B" error={errors.batchCode?.message} {...register('batchCode')} />
+              <label className="block text-xs font-medium text-slate-300 mb-1.5 font-mono">Batch Code</label>
+              <input
+                placeholder="e.g. FS-2026-B"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.03] border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-blue/50 font-mono"
+                {...register('batchCode')}
+              />
+              {errors.batchCode?.message && (
+                <span className="text-[11px] text-red-400 mt-1 block">{errors.batchCode.message}</span>
+              )}
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">Associated Course</label>
-              <Select error={errors.courseId?.message} {...register('courseId')}>
+              <label className="block text-xs font-medium text-slate-300 mb-1.5 font-mono">Associated Course</label>
+              <select
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-white/10 text-xs text-white focus:outline-none focus:border-brand-blue/50"
+                {...register('courseId')}
+              >
                 <option value="">Select Course...</option>
                 {courses.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.title}
                   </option>
                 ))}
-              </Select>
+              </select>
+              {errors.courseId?.message && (
+                <span className="text-[11px] text-red-400 mt-1 block">{errors.courseId.message}</span>
+              )}
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">Start Date</label>
-              <Input type="date" error={errors.startDate?.message} {...register('startDate')} />
+              <label className="block text-xs font-medium text-slate-300 mb-1.5 font-mono">Start Date</label>
+              <input
+                type="date"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.03] border border-white/10 text-xs text-white focus:outline-none focus:border-brand-blue/50 font-mono"
+                {...register('startDate')}
+              />
+              {errors.startDate?.message && (
+                <span className="text-[11px] text-red-400 mt-1 block">{errors.startDate.message}</span>
+              )}
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">Max Capacity</label>
-              <Input type="number" defaultValue={30} error={errors.capacity?.message} {...register('capacity')} />
+              <label className="block text-xs font-medium text-slate-300 mb-1.5 font-mono">Max Capacity</label>
+              <input
+                type="number"
+                defaultValue={30}
+                className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.03] border border-white/10 text-xs text-white focus:outline-none focus:border-brand-blue/50 font-mono"
+                {...register('capacity')}
+              />
+              {errors.capacity?.message && (
+                <span className="text-[11px] text-red-400 mt-1 block">{errors.capacity.message}</span>
+              )}
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1">Schedule & Lab Timings</label>
-            <Input placeholder="e.g. Mon-Fri | 9:30 AM – 1:30 PM (Offline Lab)" {...register('timing')} />
+            <label className="block text-xs font-medium text-slate-300 mb-1.5 font-mono">Schedule & Lab Timings</label>
+            <input
+              placeholder="e.g. Mon-Fri | 9:30 AM – 1:30 PM (Offline Lab)"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.03] border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-blue/50"
+              {...register('timing')}
+            />
           </div>
 
-          <div className="pt-2 flex justify-end gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => setCreateModalOpen(false)}>
+          <div className="pt-3 border-t border-white/10 flex justify-end gap-2">
+            <GlassButton type="button" variant="ghost" size="sm" onClick={() => setCreateModalOpen(false)}>
               Cancel
-            </Button>
-            <Button type="submit" size="sm" isLoading={isSubmitting}>
+            </GlassButton>
+            <GlassButton type="submit" variant="primary" size="sm" disabled={isSubmitting}>
               Create Batch
-            </Button>
+            </GlassButton>
           </div>
         </form>
-      </Modal>
+      </GlassModal>
 
       {/* ASSIGN TEACHER MODAL */}
       {selectedBatch && (
-        <Modal
+        <GlassModal
           isOpen={assignTeacherModalOpen}
           onClose={() => setAssignTeacherModalOpen(false)}
           title={`Assign Teacher to ${selectedBatch.name}`}
@@ -287,92 +333,68 @@ export const AdminBatches = () => {
         >
           <div className="space-y-4">
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">Select Faculty Member</label>
-              <Select value={selectedTeacherId} onChange={(e) => setSelectedTeacherId(e.target.value)}>
+              <label className="block text-xs font-medium text-slate-300 mb-1.5 font-mono">Select Faculty Member</label>
+              <select
+                value={selectedTeacherId}
+                onChange={(e) => setSelectedTeacherId(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-white/10 text-xs text-white focus:outline-none focus:border-brand-blue/50"
+              >
                 <option value="">Choose Instructor...</option>
                 {teachers.map((t) => (
                   <option key={t.id} value={t.teacherProfile?.id}>
                     Prof. {t.firstName} {t.lastName} ({t.teacherProfile?.specialization || 'Faculty'})
                   </option>
                 ))}
-              </Select>
+              </select>
             </div>
 
-            <div className="pt-2 flex justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={() => setAssignTeacherModalOpen(false)}>
+            <div className="pt-3 border-t border-white/10 flex justify-end gap-2">
+              <GlassButton variant="ghost" size="sm" onClick={() => setAssignTeacherModalOpen(false)}>
                 Cancel
-              </Button>
-              <Button size="sm" onClick={onAssignTeacher}>
+              </GlassButton>
+              <GlassButton variant="primary" size="sm" onClick={onAssignTeacher}>
                 Confirm Assignment
-              </Button>
+              </GlassButton>
             </div>
           </div>
-        </Modal>
+        </GlassModal>
       )}
 
-      {/* ENROLL STUDENT MODAL WITH DISCOUNT CALCULATION */}
+      {/* ENROLL STUDENT MODAL */}
       {selectedBatch && (
-        <Modal
+        <GlassModal
           isOpen={enrollStudentModalOpen}
           onClose={() => setEnrollStudentModalOpen(false)}
           title={`Enroll Student into ${selectedBatch.name}`}
-          description={`Program: ${selectedBatch.course?.title || 'Selected Course'} • Original Fee: ₹${(selectedBatch.course?.advertisedFee || 0).toLocaleString()}`}
+          description="Directly enroll an active student into this offline laboratory batch"
         >
-          <div className="space-y-4 text-xs">
+          <div className="space-y-4">
             <div>
-              <label className="block font-medium text-slate-300 mb-1">Select Student *</label>
-              <Select value={selectedStudentId} onChange={(e) => setSelectedStudentId(e.target.value)}>
+              <label className="block text-xs font-medium text-slate-300 mb-1.5 font-mono">Select Student</label>
+              <select
+                value={selectedStudentId}
+                onChange={(e) => setSelectedStudentId(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-white/10 text-xs text-white focus:outline-none focus:border-brand-blue/50"
+              >
                 <option value="">Choose Student...</option>
                 {students.map((s) => (
                   <option key={s.id} value={s.studentProfile?.id}>
                     {s.firstName} {s.lastName} ({s.email}) - {s.studentProfile?.enrollmentNumber}
                   </option>
                 ))}
-              </Select>
+              </select>
             </div>
 
-            <div>
-              <label className="block font-medium text-slate-300 mb-1">
-                Discount Amount (₹) <span className="text-slate-400 font-normal">(Financial aid / scholarship)</span>
-              </label>
-              <Input
-                type="number"
-                min="0"
-                max={selectedBatch.course?.advertisedFee || 0}
-                value={enrollDiscountAmount}
-                onChange={(e) => setEnrollDiscountAmount(Math.max(0, parseFloat(e.target.value) || 0))}
-                placeholder="0"
-              />
-            </div>
-
-            {/* Live Fee Calculation Preview */}
-            <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5 font-mono text-xs">
-              <div className="flex justify-between text-slate-400">
-                <span>Original Course Fee:</span>
-                <span className="text-white">₹{(selectedBatch.course?.advertisedFee || 0).toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between text-emerald-400">
-                <span>Applied Discount:</span>
-                <span>- ₹{(Number(enrollDiscountAmount) || 0).toLocaleString()}</span>
-              </div>
-              <div className="border-t border-slate-800 pt-1.5 flex justify-between font-bold text-sky-300">
-                <span>Final Payable Amount:</span>
-                <span className="text-sm text-white">
-                  ₹{Math.max(0, (selectedBatch.course?.advertisedFee || 0) - (Number(enrollDiscountAmount) || 0)).toLocaleString()}
-                </span>
-              </div>
-            </div>
-
-            <div className="pt-2 flex justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={() => setEnrollStudentModalOpen(false)}>
+            <div className="pt-3 border-t border-white/10 flex justify-end gap-2">
+              <GlassButton variant="ghost" size="sm" onClick={() => setEnrollStudentModalOpen(false)}>
                 Cancel
-              </Button>
-              <Button size="sm" onClick={onEnrollStudent} className="bg-sky-500 hover:bg-sky-600 text-white">
-                Confirm Enrollment
-              </Button>
+              </GlassButton>
+              <GlassButton variant="primary" size="sm" onClick={onEnrollStudent}>
+                Enroll Student
+              </GlassButton>
             </div>
           </div>
-        </Modal>
+        </GlassModal>
       )}
     </div>
   );

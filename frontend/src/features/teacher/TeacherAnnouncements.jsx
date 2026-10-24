@@ -5,13 +5,12 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import api from '../../lib/api';
 import { formatDate } from '../../lib/utils';
-import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
-import { Input } from '../../components/ui/Input';
-import { Select } from '../../components/ui/Select';
-import { Badge } from '../../components/ui/Badge';
-import { Modal } from '../../components/ui/Modal';
-import { Skeleton } from '../../components/ui/Skeleton';
+import {
+  GlassPanel,
+  GlassBadge,
+  GlassButton,
+  GlassModal,
+} from '../../components/ui';
 import { Plus, Bell, Trash2, Calendar, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -94,113 +93,144 @@ export const TeacherAnnouncements = () => {
           </p>
         </div>
 
-        <Button onClick={() => setCreateModalOpen(true)} className="gap-2">
+        <GlassButton variant="primary" onClick={() => setCreateModalOpen(true)} className="gap-2">
           <Plus className="w-4 h-4" /> New Announcement
-        </Button>
+        </GlassButton>
       </div>
 
       {isLoading ? (
-        <Skeleton className="h-48 w-full" />
+        <div className="h-48 w-full rounded-2xl bg-white/[0.03] animate-pulse border border-white/10" />
       ) : announcements.length === 0 ? (
-        <Card className="p-12 text-center text-slate-500 text-xs">
-          No announcements found.
-        </Card>
+        <GlassPanel className="p-12 text-center text-slate-400 text-xs">
+          No announcements published yet.
+        </GlassPanel>
       ) : (
         <div className="space-y-4">
           {announcements.map((item) => (
-            <Card key={item.id} className="p-6 space-y-3">
-              <div className="flex items-center justify-between">
+            <GlassPanel key={item.id} variant="default" className="p-6 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/10">
                 <div className="flex items-center gap-3">
                   <h3 className="text-base font-bold text-white">{item.title}</h3>
-                  <Badge variant={item.priority === 'URGENT' ? 'danger' : item.priority === 'HIGH' ? 'warning' : 'primary'}>
+                  <GlassBadge variant={item.priority === 'URGENT' ? 'danger' : item.priority === 'HIGH' ? 'warning' : 'primary'}>
                     {item.priority}
-                  </Badge>
+                  </GlassBadge>
+                  {item.targetBatch && (
+                    <GlassBadge variant="default">{item.targetBatch.name}</GlassBadge>
+                  )}
                 </div>
-                <button
-                  onClick={() => deleteMutation.mutate(item.id)}
-                  className="text-slate-500 hover:text-rose-400 p-1"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-slate-400 font-mono flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-indigo-400" />
+                    {formatDate(item.publishDate)}
+                  </span>
+                  <GlassButton
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => deleteMutation.mutate(item.id)}
+                    className="text-rose-400 hover:text-rose-300 p-1"
+                    aria-label="Delete announcement"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </GlassButton>
+                </div>
               </div>
 
-              <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-line">{item.body}</p>
-
-              <div className="pt-3 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-500 font-mono">
-                <span>Audience: {item.targetType} {item.targetBatch ? `(${item.targetBatch.name})` : ''}</span>
-                <span>Published: {formatDate(item.publishDate)}</span>
-              </div>
-            </Card>
+              <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-line">
+                {item.body}
+              </p>
+            </GlassPanel>
           ))}
         </div>
       )}
 
       {/* CREATE MODAL */}
-      <Modal
+      <GlassModal
         isOpen={createModalOpen}
         onClose={() => setCreateModalOpen(false)}
-        title="Publish Cohort Announcement"
-        description="Notify students in your assigned offline batches"
+        title="Publish Official Announcement"
+        description="Broadcast a message to an assigned laboratory cohort"
       >
         <form onSubmit={handleSubmit(onCreate)} className="space-y-4">
           <div>
             <label className="block text-xs font-medium text-slate-300 mb-1">Title</label>
-            <Input placeholder="e.g. Offline Lab Exam Preparation Guide" error={errors.title?.message} {...register('title')} />
+            <input
+              placeholder="e.g. Offline Lab Exam Schedule Revision"
+              {...register('title')}
+              className="w-full h-10 px-3.5 py-2 bg-white/[0.04] border border-white/10 rounded-xl text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500"
+            />
+            {errors.title && (
+              <p className="text-[11px] text-rose-400 mt-1">{errors.title.message}</p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1">Target Audience</label>
-              <Select error={errors.targetType?.message} {...register('targetType')}>
-                <option value="BATCH">Specific Assigned Batch</option>
-                <option value="ALL">Entire Academy</option>
-              </Select>
+              <select
+                {...register('targetType')}
+                className="w-full h-10 px-3.5 py-2 bg-[#080B14] border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500"
+              >
+                <option value="BATCH">Specific Batch</option>
+                <option value="ALL">Entire Campus</option>
+              </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">Priority</label>
-              <Select error={errors.priority?.message} {...register('priority')}>
+              <label className="block text-xs font-medium text-slate-300 mb-1">Priority Level</label>
+              <select
+                {...register('priority')}
+                className="w-full h-10 px-3.5 py-2 bg-[#080B14] border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500"
+              >
                 <option value="LOW">Low</option>
                 <option value="MEDIUM">Medium</option>
                 <option value="HIGH">High</option>
                 <option value="URGENT">Urgent</option>
-              </Select>
+              </select>
             </div>
           </div>
 
           {targetType === 'BATCH' && (
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">Select Batch</label>
-              <Select {...register('targetBatchId')}>
+              <label className="block text-xs font-medium text-slate-300 mb-1">Select Laboratory Batch</label>
+              <select
+                {...register('targetBatchId')}
+                className="w-full h-10 px-3.5 py-2 bg-[#080B14] border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500"
+              >
+                <option value="">Select assigned batch...</option>
                 {batches.map((b) => (
                   <option key={b.id} value={b.id}>
                     {b.name} ({b.batchCode})
                   </option>
                 ))}
-              </Select>
+              </select>
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1">Announcement Message</label>
+            <label className="block text-xs font-medium text-slate-300 mb-1">Message Content</label>
             <textarea
               rows={4}
-              required
-              placeholder="Enter announcement details..."
-              className="flex w-full rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-indigo-500"
+              placeholder="Write the official technical announcement details..."
               {...register('body')}
+              className="w-full px-3.5 py-2 bg-white/[0.04] border border-white/10 rounded-xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 resize-none"
             />
+            {errors.body && (
+              <p className="text-[11px] text-rose-400 mt-1">{errors.body.message}</p>
+            )}
           </div>
 
           <div className="pt-2 flex justify-end gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => setCreateModalOpen(false)}>
+            <GlassButton type="button" variant="outline" size="sm" onClick={() => setCreateModalOpen(false)}>
               Cancel
-            </Button>
-            <Button type="submit" size="sm" isLoading={isSubmitting}>
+            </GlassButton>
+            <GlassButton type="submit" variant="primary" size="sm" isLoading={isSubmitting}>
               Publish Announcement
-            </Button>
+            </GlassButton>
           </div>
         </form>
-      </Modal>
+      </GlassModal>
     </div>
   );
 };
+
+export default TeacherAnnouncements;

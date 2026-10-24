@@ -3,14 +3,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { motion, AnimatePresence } from 'motion/react';
 import api from '../../lib/api';
-import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
-import { Input } from '../../components/ui/Input';
-import { Badge } from '../../components/ui/Badge';
-import { Modal } from '../../components/ui/Modal';
-import { Skeleton } from '../../components/ui/Skeleton';
-import { Plus, Edit3, Trash2, Award, Eye, EyeOff } from 'lucide-react';
+import { GlassPanel } from '../../components/ui/GlassPanel';
+import { GlassBadge } from '../../components/ui/GlassBadge';
+import { GlassButton } from '../../components/ui/GlassButton';
+import { GlassModal } from '../../components/ui/GlassModal';
+import { Plus, Edit3, Trash2, Award, Eye, EyeOff, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 
 const storySchema = z.object({
@@ -114,70 +113,88 @@ export const AdminSuccessStories = () => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-white tracking-tight">Student Success Stories CMS</h2>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full glass-pill border border-brand-cyan/25 text-[11px] font-mono tracking-wider text-brand-cyan mb-2">
+            <Sparkles className="w-3.5 h-3.5" />
+            OUTCOMES & TESTIMONIALS CMS
+          </div>
+          <h2 className="text-3xl font-extrabold text-white tracking-tight">Student Success Stories CMS</h2>
           <p className="text-xs text-slate-400 mt-1">
             Publish verified alumni placement outcomes and career testimonials on the homepage.
           </p>
         </div>
 
-        <Button onClick={handleOpenCreate} className="gap-2">
+        <GlassButton variant="primary" onClick={handleOpenCreate} className="gap-2">
           <Plus className="w-4 h-4" /> Add Success Story
-        </Button>
+        </GlassButton>
       </div>
 
       {isLoading ? (
-        <Skeleton className="h-64 w-full" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3].map((n) => (
+            <GlassPanel key={n} className="p-6 h-52 animate-pulse" />
+          ))}
+        </div>
       ) : stories.length === 0 ? (
-        <Card className="p-12 text-center text-slate-500 text-xs">
+        <GlassPanel className="p-16 text-center text-slate-400 text-xs font-mono">
           No success stories created yet.
-        </Card>
+        </GlassPanel>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {stories.map((story) => (
-            <Card key={story.id} className="p-5 flex flex-col justify-between space-y-4">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <img
-                      src={story.photoUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(story.studentName)}`}
-                      alt={story.studentName}
-                      className="w-10 h-10 rounded-xl object-cover border border-slate-700"
-                    />
-                    <div>
-                      <h4 className="text-sm font-bold text-white">{story.studentName}</h4>
-                      <div className="text-xs text-indigo-400 font-medium">{story.jobTitle}</div>
+          <AnimatePresence>
+            {stories.map((story, idx) => (
+              <motion.div
+                key={story.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.25, delay: idx * 0.04 }}
+              >
+                <GlassPanel glow="cyan" className="p-5 flex flex-col justify-between space-y-4 h-full">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <img
+                          src={story.photoUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(story.studentName)}`}
+                          alt={story.studentName}
+                          className="w-10 h-10 rounded-xl object-cover border border-white/10"
+                        />
+                        <div>
+                          <h4 className="text-sm font-bold text-white tracking-tight">{story.studentName}</h4>
+                          <div className="text-xs text-brand-cyan font-medium">{story.jobTitle}</div>
+                        </div>
+                      </div>
+                      {story.featured && <GlassBadge variant="warning">Featured</GlassBadge>}
+                    </div>
+
+                    <div className="text-xs font-mono text-slate-300">
+                      {story.companyName} {story.packageLPA && `• ${story.packageLPA}`}
+                    </div>
+
+                    <p className="text-xs text-slate-300 italic line-clamp-3">"{story.testimonial}"</p>
+                  </div>
+
+                  <div className="pt-3 border-t border-white/5 flex items-center justify-between text-xs">
+                    <GlassBadge variant={story.published ? 'success' : 'default'}>
+                      {story.published ? 'Published' : 'Hidden'}
+                    </GlassBadge>
+                    <div className="flex items-center gap-2">
+                      <GlassButton size="sm" variant="secondary" onClick={() => handleOpenEdit(story)} className="p-1.5">
+                        <Edit3 className="w-3.5 h-3.5" />
+                      </GlassButton>
+                      <GlassButton size="sm" variant="danger" onClick={() => deleteMutation.mutate(story.id)} className="p-1.5">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </GlassButton>
                     </div>
                   </div>
-                  {story.featured && <Badge variant="warning">Featured</Badge>}
-                </div>
-
-                <div className="text-xs font-mono text-slate-300">
-                  {story.companyName} {story.packageLPA && `• ${story.packageLPA}`}
-                </div>
-
-                <p className="text-xs text-slate-400 italic line-clamp-3">"{story.testimonial}"</p>
-              </div>
-
-              <div className="pt-3 border-t border-slate-800 flex items-center justify-between text-xs">
-                <Badge variant={story.published ? 'success' : 'default'}>
-                  {story.published ? 'Published' : 'Hidden'}
-                </Badge>
-                <div className="flex items-center gap-2">
-                  <Button size="sm" variant="outline" onClick={() => handleOpenEdit(story)} className="p-1.5">
-                    <Edit3 className="w-3.5 h-3.5" />
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => deleteMutation.mutate(story.id)} className="p-1.5 text-rose-400">
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
-                </div>
-              </div>
-            </Card>
-          ))}
+                </GlassPanel>
+              </motion.div>
+            ))}
+          </AnimatePresence>
         </div>
       )}
 
       {/* MODAL */}
-      <Modal
+      <GlassModal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
         title={editingStory ? 'Edit Success Story' : 'Add Alumni Success Story'}
@@ -186,73 +203,124 @@ export const AdminSuccessStories = () => {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">Student Name</label>
-              <Input placeholder="e.g. Aarav Mehta" error={errors.studentName?.message} {...register('studentName')} />
+              <label className="block text-xs font-medium text-slate-300 mb-1.5 font-mono">Student Name</label>
+              <input
+                placeholder="e.g. Aarav Mehta"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.03] border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-blue/50"
+                {...register('studentName')}
+              />
+              {errors.studentName?.message && (
+                <span className="text-[11px] text-red-400 mt-1 block">{errors.studentName.message}</span>
+              )}
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">Course Completed</label>
-              <Input placeholder="e.g. Full-Stack Software Engineering" error={errors.courseCompleted?.message} {...register('courseCompleted')} />
+              <label className="block text-xs font-medium text-slate-300 mb-1.5 font-mono">Course Completed</label>
+              <input
+                placeholder="e.g. Full-Stack Software Engineering"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.03] border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-blue/50"
+                {...register('courseCompleted')}
+              />
+              {errors.courseCompleted?.message && (
+                <span className="text-[11px] text-red-400 mt-1 block">{errors.courseCompleted.message}</span>
+              )}
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">Job Title</label>
-              <Input placeholder="e.g. SDE II" error={errors.jobTitle?.message} {...register('jobTitle')} />
+              <label className="block text-xs font-medium text-slate-300 mb-1.5 font-mono">Job Title</label>
+              <input
+                placeholder="e.g. SDE II"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.03] border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-blue/50"
+                {...register('jobTitle')}
+              />
+              {errors.jobTitle?.message && (
+                <span className="text-[11px] text-red-400 mt-1 block">{errors.jobTitle.message}</span>
+              )}
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">Employer Company</label>
-              <Input placeholder="e.g. Amazon Web Services" error={errors.companyName?.message} {...register('companyName')} />
+              <label className="block text-xs font-medium text-slate-300 mb-1.5 font-mono">Employer Company</label>
+              <input
+                placeholder="e.g. Amazon Web Services"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.03] border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-blue/50"
+                {...register('companyName')}
+              />
+              {errors.companyName?.message && (
+                <span className="text-[11px] text-red-400 mt-1 block">{errors.companyName.message}</span>
+              )}
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">Compensation Package</label>
-              <Input placeholder="e.g. 34 LPA" {...register('packageLPA')} />
+              <label className="block text-xs font-medium text-slate-300 mb-1.5 font-mono">Compensation Package</label>
+              <input
+                placeholder="e.g. 34 LPA"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.03] border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-blue/50 font-mono"
+                {...register('packageLPA')}
+              />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">Placement Year</label>
-              <Input type="number" defaultValue={2025} {...register('placementYear')} />
+              <label className="block text-xs font-medium text-slate-300 mb-1.5 font-mono">Placement Year</label>
+              <input
+                type="number"
+                defaultValue={2025}
+                className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.03] border border-white/10 text-xs text-white focus:outline-none focus:border-brand-blue/50 font-mono"
+                {...register('placementYear')}
+              />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1">Student Photograph URL</label>
-            <Input placeholder="https://..." {...register('photoUrl')} />
+            <label className="block text-xs font-medium text-slate-300 mb-1.5 font-mono">Student Photograph URL</label>
+            <input
+              placeholder="https://..."
+              className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.03] border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-blue/50 font-mono"
+              {...register('photoUrl')}
+            />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1">Student Testimonial</label>
+            <label className="block text-xs font-medium text-slate-300 mb-1.5 font-mono">Student Testimonial</label>
             <textarea
               rows={3}
               placeholder="Quote describing hands-on learning at Intern Infotech..."
-              className="flex w-full rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-indigo-500"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.03] border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-blue/50"
               {...register('testimonial')}
             />
           </div>
 
           <div className="flex items-center gap-6 pt-2">
             <div className="flex items-center gap-2">
-              <input type="checkbox" id="storyFeatured" className="rounded border-slate-700 bg-slate-900 text-indigo-600" {...register('featured')} />
-              <label htmlFor="storyFeatured" className="text-xs text-slate-300">Feature on Home</label>
+              <input
+                type="checkbox"
+                id="storyFeatured"
+                className="rounded border-white/20 bg-white/5 text-brand-blue focus:ring-brand-blue"
+                {...register('featured')}
+              />
+              <label htmlFor="storyFeatured" className="text-xs text-slate-300 font-mono">Feature on Home</label>
             </div>
             <div className="flex items-center gap-2">
-              <input type="checkbox" id="storyPublished" className="rounded border-slate-700 bg-slate-900 text-indigo-600" {...register('published')} />
-              <label htmlFor="storyPublished" className="text-xs text-slate-300">Publicly Published</label>
+              <input
+                type="checkbox"
+                id="storyPublished"
+                className="rounded border-white/20 bg-white/5 text-brand-blue focus:ring-brand-blue"
+                {...register('published')}
+              />
+              <label htmlFor="storyPublished" className="text-xs text-slate-300 font-mono">Publicly Published</label>
             </div>
           </div>
 
-          <div className="pt-4 border-t border-slate-800 flex justify-end gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => setModalOpen(false)}>
+          <div className="pt-3 border-t border-white/10 flex justify-end gap-2">
+            <GlassButton type="button" variant="ghost" size="sm" onClick={() => setModalOpen(false)}>
               Cancel
-            </Button>
-            <Button type="submit" size="sm" isLoading={isSubmitting}>
+            </GlassButton>
+            <GlassButton type="submit" variant="primary" size="sm" disabled={isSubmitting}>
               {editingStory ? 'Save Changes' : 'Create Story'}
-            </Button>
+            </GlassButton>
           </div>
         </form>
-      </Modal>
+      </GlassModal>
     </div>
   );
 };

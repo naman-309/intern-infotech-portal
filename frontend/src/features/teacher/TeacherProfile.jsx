@@ -1,21 +1,21 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { motion } from 'motion/react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../lib/api';
-import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
-import { Input } from '../../components/ui/Input';
+import { GlassPanel } from '../../components/ui/GlassPanel';
+import { GlassButton } from '../../components/ui/GlassButton';
 import { formatDate } from '../../lib/utils';
-import { Briefcase, Lock, Save, Camera, Upload } from 'lucide-react';
+import { Briefcase, Lock, Save, Sparkles, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 
 const teacherProfileSchema = z.object({
   specialization: z.string().optional(),
   bio: z.string().optional(),
   phone: z.string().optional(),
-  avatarUrl: z.string().optional(),
+  avatarUrl: z.string().url().optional().or(z.literal('')),
 });
 
 const passwordSchema = z.object({
@@ -30,9 +30,6 @@ const passwordSchema = z.object({
 export const TeacherProfile = () => {
   const { user, refreshUser } = useAuth();
   const profile = user?.teacherProfile;
-
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [previewUrl, setPreviewUrl] = useState(user?.avatarUrl || '');
 
   const {
     register: regProfile,
@@ -57,46 +54,11 @@ export const TeacherProfile = () => {
     resolver: zodResolver(passwordSchema),
   });
 
-  const handleFileChange = (e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (!file.type.startsWith('image/')) {
-        toast.error('Please choose a valid image file (JPG, PNG, or WEBP)');
-        return;
-      }
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error('Photo size must not exceed 5MB');
-        return;
-      }
-      setSelectedFile(file);
-      setPreviewUrl(URL.createObjectURL(file));
-      toast.info(`Photo selected: ${file.name}. Click "Save Profile" to upload.`);
-    }
-  };
-
   const onUpdateProfile = async (values) => {
     try {
-      const formData = new FormData();
-      if (values.specialization) formData.append('specialization', values.specialization);
-      if (values.bio) formData.append('bio', values.bio);
-      if (values.phone) formData.append('phone', values.phone);
-
-      if (selectedFile) {
-        formData.append('avatar', selectedFile);
-      } else if (values.avatarUrl) {
-        formData.append('avatarUrl', values.avatarUrl);
-      }
-
-      const res = await api.put('/users/profile', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-
-      if (res?.data?.user?.avatarUrl) {
-        setPreviewUrl(res.data.user.avatarUrl);
-      }
+      await api.put('/users/profile', values);
       await refreshUser();
-      setSelectedFile(null);
-      toast.success('Instructor photo & profile updated successfully');
+      toast.success('Instructor profile updated successfully');
     } catch (err) {
       toast.error(err.message || 'Failed to update profile');
     }
@@ -118,150 +80,140 @@ export const TeacherProfile = () => {
   return (
     <div className="space-y-8 max-w-4xl">
       <div>
-        <h2 className="text-2xl font-bold text-white tracking-tight">Faculty Credentials & Settings</h2>
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full glass-pill border border-brand-cyan/25 text-[11px] font-mono tracking-wider text-brand-cyan mb-2">
+          <Sparkles className="w-3.5 h-3.5" />
+          FACULTY ACCOUNT SETTINGS
+        </div>
+        <h2 className="text-3xl font-extrabold text-white tracking-tight">Faculty Credentials & Settings</h2>
         <p className="text-xs text-slate-400 mt-1">
           Review academic appointments and manage instructor bio preferences.
         </p>
       </div>
 
-      <Card className="p-6 bg-slate-900/80 border-slate-800">
-        <h3 className="text-xs font-bold uppercase text-slate-400 font-mono mb-4 flex items-center gap-2">
-          <Briefcase className="w-4 h-4 text-indigo-400" />
+      <GlassPanel glow="cyan" className="p-6">
+        <h3 className="text-xs font-bold uppercase tracking-wider text-brand-cyan font-mono mb-4 flex items-center gap-2">
+          <Briefcase className="w-4 h-4 text-brand-cyan" />
           Institutional Appointment Details
         </h3>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-xs font-mono">
-          <div>
-            <div className="text-slate-500 uppercase text-[10px]">Employee ID</div>
-            <div className="text-sm font-bold text-white mt-1">{profile?.employeeId || 'IIT-T101'}</div>
+          <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
+            <div className="text-slate-500 uppercase text-[10px] tracking-wider">Employee ID</div>
+            <div className="text-base font-bold text-white mt-1">{profile?.employeeId || 'IIT-T101'}</div>
           </div>
-          <div>
-            <div className="text-slate-500 uppercase text-[10px]">Qualifications</div>
-            <div className="text-sm text-slate-200 mt-1">{profile?.qualifications || 'M.Tech / Ex-Tech Lead'}</div>
+          <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
+            <div className="text-slate-500 uppercase text-[10px] tracking-wider">Qualifications</div>
+            <div className="text-sm font-semibold text-slate-200 mt-1">{profile?.qualifications || 'M.Tech / Ex-Tech Lead'}</div>
           </div>
-          <div>
-            <div className="text-slate-500 uppercase text-[10px]">Appointment Date</div>
+          <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
+            <div className="text-slate-500 uppercase text-[10px] tracking-wider">Appointment Date</div>
             <div className="text-sm text-slate-300 mt-1">{formatDate(profile?.joinedAt)}</div>
           </div>
         </div>
-      </Card>
+      </GlassPanel>
 
-      <Card className="p-6">
-        <CardHeader className="p-0 pb-4">
-          <CardTitle>Edit Instructor Profile</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0 pt-2">
-          <form onSubmit={handleProfileSubmit(onUpdateProfile)} className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">Teaching Specialization</label>
-                <Input placeholder="e.g. Distributed Databases" {...regProfile('specialization')} />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">Phone Number</label>
-                <Input placeholder="+91..." {...regProfile('phone')} />
-              </div>
-            </div>
+      <GlassPanel className="p-6">
+        <div className="pb-4 border-b border-white/5 mb-5">
+          <h3 className="text-lg font-bold text-white">Edit Instructor Profile</h3>
+          <p className="text-xs text-slate-400 mt-0.5">Update public bio and communication contact for students</p>
+        </div>
 
-            {/* Passport Photo Upload directly from phone/laptop */}
-            <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 flex flex-col sm:flex-row items-center gap-5">
-              <div className="relative group flex-shrink-0">
-                <img
-                  src={
-                    previewUrl ||
-                    user?.avatarUrl ||
-                    `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.firstName || 'Faculty')}&background=0284c7&color=fff&size=128`
-                  }
-                  alt="Faculty Passport Photo"
-                  className="w-24 h-24 rounded-2xl object-cover border-2 border-sky-500/40 shadow-lg shadow-sky-500/10"
-                />
-                <label
-                  htmlFor="teacher-avatar-input"
-                  className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 rounded-2xl opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity text-white text-[11px] font-medium"
-                >
-                  <Upload className="w-5 h-5 mb-1 text-sky-400" />
-                  Change
-                </label>
-              </div>
-
-              <div className="space-y-1.5 text-center sm:text-left flex-1">
-                <div className="text-sm font-semibold text-white flex items-center justify-center sm:justify-start gap-2">
-                  <Camera className="w-4 h-4 text-sky-400" />
-                  Faculty Photograph
-                </div>
-                <p className="text-xs text-slate-400">
-                  Upload your photo directly from your device (JPG, PNG, WEBP up to 5MB).
-                </p>
-                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5 pt-1">
-                  <label
-                    htmlFor="teacher-avatar-input"
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 text-xs font-medium cursor-pointer border border-sky-500/30 transition-colors"
-                  >
-                    <Upload className="w-3.5 h-3.5" />
-                    Upload from Device
-                  </label>
-                  {selectedFile ? (
-                    <span className="text-[11px] text-emerald-400 font-mono truncate max-w-[200px]">
-                      ✓ {selectedFile.name}
-                    </span>
-                  ) : (
-                    <span className="text-[11px] text-slate-500">
-                      Saved to Cloudinary
-                    </span>
-                  )}
-                </div>
-                <input
-                  id="teacher-avatar-input"
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleFileChange}
-                />
-              </div>
-            </div>
-
+        <form onSubmit={handleProfileSubmit(onUpdateProfile)} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">Biography</label>
-              <textarea
-                rows={3}
-                placeholder="Share your engineering pedigree..."
-                className="flex w-full rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-indigo-500"
-                {...regProfile('bio')}
+              <label className="block text-xs font-medium text-slate-300 mb-1.5 font-mono">Teaching Specialization</label>
+              <input
+                placeholder="e.g. Distributed Databases"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.03] border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-blue/50 focus:ring-1 focus:ring-brand-blue/50 transition-all font-mono"
+                {...regProfile('specialization')}
               />
             </div>
-
-            <Button type="submit" isLoading={profileSubmitting} className="gap-2">
-              <Save className="w-4 h-4" /> Save Profile
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-
-      <Card className="p-6">
-        <CardHeader className="p-0 pb-4">
-          <CardTitle>Change Security Password</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0 pt-2">
-          <form onSubmit={handlePassSubmit(onChangePassword)} className="space-y-4 max-w-md">
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">Current Password</label>
-              <Input type="password" error={passErrors.currentPassword?.message} {...regPass('currentPassword')} />
+              <label className="block text-xs font-medium text-slate-300 mb-1.5 font-mono">Phone Number</label>
+              <input
+                placeholder="+91..."
+                className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.03] border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-blue/50 focus:ring-1 focus:ring-brand-blue/50 transition-all font-mono"
+                {...regProfile('phone')}
+              />
             </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">New Password</label>
-              <Input type="password" error={passErrors.newPassword?.message} {...regPass('newPassword')} />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">Confirm New Password</label>
-              <Input type="password" error={passErrors.confirmPassword?.message} {...regPass('confirmPassword')} />
-            </div>
+          </div>
 
-            <Button type="submit" variant="secondary" isLoading={passSubmitting} className="gap-2">
-              <Lock className="w-4 h-4" /> Update Password
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+          <div>
+            <label className="block text-xs font-medium text-slate-300 mb-1.5 font-mono">Avatar Image URL</label>
+            <input
+              placeholder="https://..."
+              className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.03] border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-blue/50 focus:ring-1 focus:ring-brand-blue/50 transition-all font-mono"
+              {...regProfile('avatarUrl')}
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-slate-300 mb-1.5 font-mono">Biography</label>
+            <textarea
+              rows={3}
+              placeholder="Share your engineering pedigree..."
+              className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.03] border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-blue/50 focus:ring-1 focus:ring-brand-blue/50 transition-all"
+              {...regProfile('bio')}
+            />
+          </div>
+
+          <GlassButton type="submit" variant="primary" disabled={profileSubmitting} className="gap-2">
+            <Save className="w-4 h-4" /> Save Profile
+          </GlassButton>
+        </form>
+      </GlassPanel>
+
+      <GlassPanel glow="violet" className="p-6">
+        <div className="pb-4 border-b border-white/5 mb-5 flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-brand-violet/10 border border-brand-violet/30 flex items-center justify-center text-brand-violet">
+            <ShieldCheck className="w-4 h-4" />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-white">Change Security Password</h3>
+            <p className="text-xs text-slate-400 mt-0.5">Ensure your portal access password is cryptographically strong</p>
+          </div>
+        </div>
+
+        <form onSubmit={handlePassSubmit(onChangePassword)} className="space-y-4 max-w-md">
+          <div>
+            <label className="block text-xs font-medium text-slate-300 mb-1.5 font-mono">Current Password</label>
+            <input
+              type="password"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.03] border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-violet/50 focus:ring-1 focus:ring-brand-violet/50 transition-all"
+              {...regPass('currentPassword')}
+            />
+            {passErrors.currentPassword?.message && (
+              <span className="text-[11px] text-red-400 mt-1 block">{passErrors.currentPassword.message}</span>
+            )}
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-300 mb-1.5 font-mono">New Password</label>
+            <input
+              type="password"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.03] border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-violet/50 focus:ring-1 focus:ring-brand-violet/50 transition-all"
+              {...regPass('newPassword')}
+            />
+            {passErrors.newPassword?.message && (
+              <span className="text-[11px] text-red-400 mt-1 block">{passErrors.newPassword.message}</span>
+            )}
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-300 mb-1.5 font-mono">Confirm New Password</label>
+            <input
+              type="password"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.03] border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-violet/50 focus:ring-1 focus:ring-brand-violet/50 transition-all"
+              {...regPass('confirmPassword')}
+            />
+            {passErrors.confirmPassword?.message && (
+              <span className="text-[11px] text-red-400 mt-1 block">{passErrors.confirmPassword.message}</span>
+            )}
+          </div>
+
+          <GlassButton type="submit" variant="secondary" disabled={passSubmitting} className="gap-2">
+            <Lock className="w-4 h-4" /> Update Password
+          </GlassButton>
+        </form>
+      </GlassPanel>
     </div>
   );
 };

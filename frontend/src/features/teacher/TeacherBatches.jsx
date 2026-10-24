@@ -2,12 +2,13 @@ import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../lib/api';
 import { formatDate } from '../../lib/utils';
-import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
-import { Badge } from '../../components/ui/Badge';
-import { Button } from '../../components/ui/Button';
-import { Skeleton } from '../../components/ui/Skeleton';
-import { Modal } from '../../components/ui/Modal';
-import { Calendar, Users, Clock, Mail, Phone, ExternalLink } from 'lucide-react';
+import {
+  GlassPanel,
+  GlassBadge,
+  GlassButton,
+  GlassModal,
+} from '../../components/ui';
+import { Calendar, Users, Clock, Mail, Phone } from 'lucide-react';
 
 export const TeacherBatches = () => {
   const [selectedBatchId, setSelectedBatchId] = useState(null);
@@ -39,22 +40,22 @@ export const TeacherBatches = () => {
       </div>
 
       {isLoading ? (
-        <Skeleton className="h-64 w-full" />
+        <div className="h-64 w-full rounded-2xl bg-white/[0.03] animate-pulse border border-white/10" />
       ) : batches.length === 0 ? (
-        <Card className="p-12 text-center text-slate-500 text-xs">
+        <GlassPanel className="p-12 text-center text-slate-400 text-xs">
           No batches assigned to your instructor profile.
-        </Card>
+        </GlassPanel>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {batches.map((batch) => (
-            <Card key={batch.id} className="p-6 flex flex-col justify-between hover:border-indigo-500/40 transition-all">
+            <GlassPanel key={batch.id} variant="default" className="p-6 flex flex-col justify-between">
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-bold text-white">{batch.name}</h3>
-                  <Badge variant="primary">{batch.batchCode}</Badge>
+                  <GlassBadge variant="primary">{batch.batchCode}</GlassBadge>
                 </div>
 
-                <div className="text-xs text-indigo-300 font-medium">{batch.course.title}</div>
+                <div className="text-xs text-indigo-300 font-medium">{batch.course?.title}</div>
 
                 <div className="space-y-2 text-xs text-slate-400">
                   <div className="flex items-center gap-2">
@@ -72,20 +73,20 @@ export const TeacherBatches = () => {
                 </div>
               </div>
 
-              <div className="pt-6 border-t border-slate-800/80 mt-4 flex items-center justify-between">
+              <div className="pt-6 border-t border-white/10 mt-4 flex items-center justify-between">
                 <span className="text-[11px] text-slate-500 font-mono">Status: {batch.status}</span>
-                <Button size="sm" variant="outline" onClick={() => setSelectedBatchId(batch.id)}>
+                <GlassButton size="sm" variant="secondary" onClick={() => setSelectedBatchId(batch.id)}>
                   View Student Roster
-                </Button>
+                </GlassButton>
               </div>
-            </Card>
+            </GlassPanel>
           ))}
         </div>
       )}
 
       {/* ROSTER MODAL */}
       {selectedBatchId && (
-        <Modal
+        <GlassModal
           isOpen={!!selectedBatchId}
           onClose={() => setSelectedBatchId(null)}
           title={`Batch Roster: ${selectedBatch?.name || 'Loading...'}`}
@@ -94,39 +95,46 @@ export const TeacherBatches = () => {
         >
           <div className="space-y-4">
             {rosterLoading ? (
-              <Skeleton className="h-48 w-full" />
+              <div className="h-48 w-full rounded-xl bg-white/[0.03] animate-pulse" />
             ) : enrollments.length === 0 ? (
               <div className="text-center py-8 text-xs text-slate-500">
                 No students enrolled in this batch yet.
               </div>
             ) : (
-              <div className="divide-y divide-slate-800">
+              <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
                 {enrollments.map((enr) => (
-                  <div key={enr.id} className="py-3 flex items-center justify-between text-xs">
+                  <div
+                    key={enr.id}
+                    className="p-3.5 rounded-xl bg-white/[0.03] border border-white/10 flex items-center justify-between"
+                  >
                     <div>
-                      <h5 className="font-bold text-white">
-                        {enr.student.user?.firstName} {enr.student.user?.lastName}
+                      <h5 className="text-xs font-semibold text-white">
+                        {enr.student?.user?.name || `${enr.student?.user?.firstName || ''} ${enr.student?.user?.lastName || ''}`.trim()}
                       </h5>
-                      <div className="text-[11px] text-slate-400 font-mono">
-                        Roll #{enr.student.rollNumber || 'N/A'} • {enr.student.enrollmentNumber}
+                      <div className="text-[11px] text-slate-400 font-mono mt-0.5">
+                        Roll #{enr.student?.rollNumber || 'N/A'} • {enr.student?.enrollmentNumber}
                       </div>
                     </div>
-                    <div className="text-right text-[11px] text-slate-400 font-mono">
-                      <div>{enr.student.user?.email}</div>
-                      <div>{enr.student.user?.phone || 'No phone'}</div>
+
+                    <div className="text-right text-xs text-slate-400 font-mono">
+                      <div>{enr.student?.user?.email}</div>
+                      <div className="text-slate-500">{enr.student?.user?.phone || 'No phone'}</div>
                     </div>
                   </div>
                 ))}
               </div>
             )}
-            <div className="pt-4 border-t border-slate-800 flex justify-end">
-              <Button size="sm" variant="outline" onClick={() => setSelectedBatchId(null)}>
+
+            <div className="pt-4 border-t border-white/10 flex justify-end">
+              <GlassButton variant="outline" size="sm" onClick={() => setSelectedBatchId(null)}>
                 Close Roster
-              </Button>
+              </GlassButton>
             </div>
           </div>
-        </Modal>
+        </GlassModal>
       )}
     </div>
   );
 };
+
+export default TeacherBatches;

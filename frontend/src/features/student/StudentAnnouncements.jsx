@@ -2,9 +2,7 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../lib/api';
 import { formatDate } from '../../lib/utils';
-import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
-import { Badge } from '../../components/ui/Badge';
-import { Skeleton } from '../../components/ui/Skeleton';
+import { GlassPanel, GlassBadge } from '../../components/ui';
 import { Bell, User, Calendar, AlertTriangle } from 'lucide-react';
 
 export const StudentAnnouncements = () => {
@@ -27,23 +25,23 @@ export const StudentAnnouncements = () => {
       {isLoading ? (
         <div className="space-y-4">
           {[1, 2, 3].map((n) => (
-            <Skeleton key={n} className="h-32 w-full" />
+            <div key={n} className="h-32 w-full rounded-2xl bg-white/[0.03] animate-pulse border border-white/10" />
           ))}
         </div>
       ) : announcements.length === 0 ? (
-        <Card className="p-12 text-center text-slate-500 text-xs">
-          No active announcements found.
-        </Card>
+        <GlassPanel className="p-12 text-center text-slate-400 text-xs">
+          No active announcements found for your profile.
+        </GlassPanel>
       ) : (
         <div className="space-y-4">
           {announcements.map((item) => (
-            <Card key={item.id} className="p-6 space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-800">
+            <GlassPanel key={item.id} variant="default" className="p-6 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-white/10">
                 <div className="flex items-center gap-3">
                   <h3 className="text-base font-bold text-white">{item.title}</h3>
-                  <Badge variant={item.priority === 'URGENT' ? 'danger' : item.priority === 'HIGH' ? 'warning' : 'primary'}>
+                  <GlassBadge variant={item.priority === 'URGENT' ? 'danger' : item.priority === 'HIGH' ? 'warning' : 'primary'}>
                     {item.priority}
-                  </Badge>
+                  </GlassBadge>
                 </div>
                 <div className="text-xs text-slate-400 font-mono flex items-center gap-1.5">
                   <Calendar className="w-3.5 h-3.5 text-indigo-400" />
@@ -55,16 +53,18 @@ export const StudentAnnouncements = () => {
                 {item.body}
               </p>
 
-              <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-500 font-mono">
+              <div className="pt-3 border-t border-white/10 flex items-center justify-between text-xs text-slate-400 font-mono">
                 <span>
-                  Author: {item.author?.firstName} {item.author?.lastName} ({item.author?.role})
+                  Author: {item.author?.name || `${item.author?.firstName || ''} ${item.author?.lastName || ''}`.trim()} ({item.author?.role})
                 </span>
                 <span>Audience: {item.targetType}</span>
               </div>
-            </Card>
+            </GlassPanel>
           ))}
         </div>
       )}
     </div>
   );
 };
+
+export default StudentAnnouncements;

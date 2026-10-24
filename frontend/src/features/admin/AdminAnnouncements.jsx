@@ -3,16 +3,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { motion, AnimatePresence } from 'motion/react';
 import api from '../../lib/api';
 import { formatDate } from '../../lib/utils';
-import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
-import { Input } from '../../components/ui/Input';
-import { Select } from '../../components/ui/Select';
-import { Badge } from '../../components/ui/Badge';
-import { Modal } from '../../components/ui/Modal';
-import { Skeleton } from '../../components/ui/Skeleton';
-import { Plus, Bell, Trash2, Mail, Send } from 'lucide-react';
+import { GlassPanel } from '../../components/ui/GlassPanel';
+import { GlassBadge } from '../../components/ui/GlassBadge';
+import { GlassButton } from '../../components/ui/GlassButton';
+import { GlassModal } from '../../components/ui/GlassModal';
+import { Plus, Bell, Trash2, Mail, Send, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 
 const announcementSchema = z.object({
@@ -90,65 +88,84 @@ export const AdminAnnouncements = () => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-white tracking-tight">Institute Announcements & Notifications</h2>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full glass-pill border border-brand-blue/25 text-[11px] font-mono tracking-wider text-brand-blue mb-2">
+            <Sparkles className="w-3.5 h-3.5" />
+            COMMUNICATION HUB
+          </div>
+          <h2 className="text-3xl font-extrabold text-white tracking-tight">Institute Announcements & Notifications</h2>
           <p className="text-xs text-slate-400 mt-1">
             Publish official notices targeted to the entire academy, specific courses, or batches with optional email dispatch.
           </p>
         </div>
 
-        <Button onClick={() => setCreateModalOpen(true)} className="gap-2">
+        <GlassButton variant="primary" onClick={() => setCreateModalOpen(true)} className="gap-2">
           <Plus className="w-4 h-4" /> Create Announcement
-        </Button>
+        </GlassButton>
       </div>
 
       {isLoading ? (
-        <Skeleton className="h-64 w-full" />
+        <div className="space-y-4">
+          {[1, 2, 3].map((n) => (
+            <GlassPanel key={n} className="p-6 h-32 animate-pulse" />
+          ))}
+        </div>
       ) : announcements.length === 0 ? (
-        <Card className="p-12 text-center text-slate-500 text-xs">
+        <GlassPanel className="p-16 text-center text-slate-400 text-xs font-mono">
           No announcements published yet.
-        </Card>
+        </GlassPanel>
       ) : (
         <div className="space-y-4">
-          {announcements.map((item) => (
-            <Card key={item.id} className="p-6 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <h3 className="text-base font-bold text-white">{item.title}</h3>
-                  <Badge variant={item.priority === 'URGENT' ? 'danger' : item.priority === 'HIGH' ? 'warning' : 'primary'}>
-                    {item.priority}
-                  </Badge>
-                  {item.emailSent && (
-                    <span className="flex items-center gap-1 text-[11px] text-emerald-400 font-mono">
-                      <Mail className="w-3.5 h-3.5" /> Email Dispatched
+          <AnimatePresence>
+            {announcements.map((item, idx) => (
+              <motion.div
+                key={item.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.25, delay: idx * 0.04 }}
+              >
+                <GlassPanel glow="blue" className="p-6 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <h3 className="text-base font-bold text-white tracking-tight">{item.title}</h3>
+                      <GlassBadge variant={item.priority === 'URGENT' ? 'danger' : item.priority === 'HIGH' ? 'warning' : 'cyan'}>
+                        {item.priority}
+                      </GlassBadge>
+                      {item.emailSent && (
+                        <span className="flex items-center gap-1 text-[11px] text-emerald-400 font-mono">
+                          <Mail className="w-3.5 h-3.5" /> Email Dispatched
+                        </span>
+                      )}
+                    </div>
+
+                    <button
+                      onClick={() => deleteMutation.mutate(item.id)}
+                      className="text-slate-400 hover:text-rose-400 p-1.5 rounded-lg hover:bg-rose-500/10 transition-colors"
+                      title="Delete Announcement"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-line">{item.body}</p>
+
+                  <div className="pt-3 border-t border-white/5 flex items-center justify-between text-[11px] text-slate-400 font-mono">
+                    <span>
+                      Audience: <strong className="text-brand-cyan">{item.targetType}</strong>
+                      {item.targetCourse ? ` (${item.targetCourse.title})` : ''}
+                      {item.targetBatch ? ` (${item.targetBatch.name})` : ''}
                     </span>
-                  )}
-                </div>
-
-                <button
-                  onClick={() => deleteMutation.mutate(item.id)}
-                  className="text-slate-500 hover:text-rose-400 p-1"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-
-              <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-line">{item.body}</p>
-
-              <div className="pt-3 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-500 font-mono">
-                <span>
-                  Audience: <strong className="text-slate-400">{item.targetType}</strong>
-                  {item.targetCourse ? ` (${item.targetCourse.title})` : ''}
-                  {item.targetBatch ? ` (${item.targetBatch.name})` : ''}
-                </span>
-                <span>Published on {formatDate(item.publishDate)}</span>
-              </div>
-            </Card>
-          ))}
+                    <span>Published on {formatDate(item.publishDate)}</span>
+                  </div>
+                </GlassPanel>
+              </motion.div>
+            ))}
+          </AnimatePresence>
         </div>
       )}
 
       {/* CREATE MODAL */}
-      <Modal
+      <GlassModal
         isOpen={createModalOpen}
         onClose={() => setCreateModalOpen(false)}
         title="Broadcast Institute Announcement"
@@ -156,63 +173,82 @@ export const AdminAnnouncements = () => {
       >
         <form onSubmit={handleSubmit(onCreate)} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1">Announcement Title</label>
-            <Input placeholder="e.g. Schedule for Offline Project Showcase" error={errors.title?.message} {...register('title')} />
+            <label className="block text-xs font-medium text-slate-300 mb-1.5 font-mono">Announcement Title</label>
+            <input
+              placeholder="e.g. Schedule for Offline Project Showcase"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.03] border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-blue/50"
+              {...register('title')}
+            />
+            {errors.title?.message && (
+              <span className="text-[11px] text-red-400 mt-1 block">{errors.title.message}</span>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">Target Audience</label>
-              <Select error={errors.targetType?.message} {...register('targetType')}>
+              <label className="block text-xs font-medium text-slate-300 mb-1.5 font-mono">Target Audience</label>
+              <select
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-white/10 text-xs text-white focus:outline-none focus:border-brand-blue/50 font-mono"
+                {...register('targetType')}
+              >
                 <option value="ALL">Entire Institute (All Students)</option>
                 <option value="COURSE">Target Specific Course</option>
                 <option value="BATCH">Target Specific Batch</option>
-              </Select>
+              </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">Priority</label>
-              <Select error={errors.priority?.message} {...register('priority')}>
+              <label className="block text-xs font-medium text-slate-300 mb-1.5 font-mono">Priority</label>
+              <select
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-white/10 text-xs text-white focus:outline-none focus:border-brand-blue/50 font-mono"
+                {...register('priority')}
+              >
                 <option value="LOW">Low</option>
                 <option value="MEDIUM">Medium</option>
                 <option value="HIGH">High</option>
                 <option value="URGENT">Urgent</option>
-              </Select>
+              </select>
             </div>
           </div>
 
           {targetType === 'COURSE' && (
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">Select Course</label>
-              <Select {...register('targetCourseId')}>
+              <label className="block text-xs font-medium text-slate-300 mb-1.5 font-mono">Select Course</label>
+              <select
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-white/10 text-xs text-white focus:outline-none focus:border-brand-blue/50"
+                {...register('targetCourseId')}
+              >
                 {courses.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.title}
                   </option>
                 ))}
-              </Select>
+              </select>
             </div>
           )}
 
           {targetType === 'BATCH' && (
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">Select Batch</label>
-              <Select {...register('targetBatchId')}>
+              <label className="block text-xs font-medium text-slate-300 mb-1.5 font-mono">Select Batch</label>
+              <select
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-white/10 text-xs text-white focus:outline-none focus:border-brand-blue/50 font-mono"
+                {...register('targetBatchId')}
+              >
                 {batches.map((b) => (
                   <option key={b.id} value={b.id}>
                     {b.name} ({b.batchCode})
                   </option>
                 ))}
-              </Select>
+              </select>
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1">Message Body</label>
+            <label className="block text-xs font-medium text-slate-300 mb-1.5 font-mono">Message Body</label>
             <textarea
               rows={4}
               required
               placeholder="Enter official announcement message..."
-              className="flex w-full rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-indigo-500"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.03] border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-blue/50"
               {...register('body')}
             />
           </div>
@@ -221,24 +257,24 @@ export const AdminAnnouncements = () => {
             <input
               type="checkbox"
               id="sendEmailNotification"
-              className="rounded border-slate-700 bg-slate-900 text-indigo-600"
+              className="rounded border-white/20 bg-white/5 text-brand-blue focus:ring-brand-blue"
               {...register('sendEmailNotification')}
             />
-            <label htmlFor="sendEmailNotification" className="text-xs text-slate-300">
+            <label htmlFor="sendEmailNotification" className="text-xs text-slate-300 font-mono">
               Dispatch email notification via Nodemailer to all target recipients
             </label>
           </div>
 
-          <div className="pt-4 border-t border-slate-800 flex justify-end gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => setCreateModalOpen(false)}>
+          <div className="pt-3 border-t border-white/10 flex justify-end gap-2">
+            <GlassButton type="button" variant="ghost" size="sm" onClick={() => setCreateModalOpen(false)}>
               Cancel
-            </Button>
-            <Button type="submit" size="sm" isLoading={isSubmitting}>
+            </GlassButton>
+            <GlassButton type="submit" variant="primary" size="sm" disabled={isSubmitting}>
               Publish Announcement
-            </Button>
+            </GlassButton>
           </div>
         </form>
-      </Modal>
+      </GlassModal>
     </div>
   );
 };

@@ -3,15 +3,24 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { motion } from 'motion/react';
 import api from '../../lib/api';
 import { formatDate } from '../../lib/utils';
-import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
-import { Input } from '../../components/ui/Input';
-import { Badge } from '../../components/ui/Badge';
-import { Modal } from '../../components/ui/Modal';
-import { Skeleton } from '../../components/ui/Skeleton';
-import { Plus, Upload, Trash2, CheckCircle2, XCircle, Search } from 'lucide-react';
+import { GlassPanel } from '../../components/ui/GlassPanel';
+import { GlassBadge } from '../../components/ui/GlassBadge';
+import { GlassButton } from '../../components/ui/GlassButton';
+import { GlassModal } from '../../components/ui/GlassModal';
+import {
+  GlassTable,
+  GlassTableHeader,
+  GlassTableHead,
+  GlassTableBody,
+  GlassTableRow,
+  GlassTableCell,
+  GlassTableEmpty,
+  GlassTableLoading,
+} from '../../components/ui/GlassTable';
+import { Plus, Upload, Trash2, CheckCircle2, XCircle, Search, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 
 const addSingleSchema = z.object({
@@ -90,83 +99,87 @@ export const AdminEligibleEmails = () => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-white tracking-tight">Offline Student Eligibility Registry</h2>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full glass-pill border border-brand-cyan/25 text-[11px] font-mono tracking-wider text-brand-cyan mb-2">
+            <Sparkles className="w-3.5 h-3.5" />
+            OFFLINE ADMISSIONS REGISTRY
+          </div>
+          <h2 className="text-3xl font-extrabold text-white tracking-tight">Offline Student Eligibility Registry</h2>
           <p className="text-xs text-slate-400 mt-1">
             Authoritative registry of students admitted offline at the campus desk. Used for portal registration verification.
           </p>
         </div>
 
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => setBulkModalOpen(true)} className="gap-2">
+          <GlassButton variant="secondary" size="sm" onClick={() => setBulkModalOpen(true)} className="gap-2">
             <Upload className="w-4 h-4" /> Bulk Import JSON
-          </Button>
-          <Button size="sm" onClick={() => setAddModalOpen(true)} className="gap-2">
+          </GlassButton>
+          <GlassButton variant="primary" size="sm" onClick={() => setAddModalOpen(true)} className="gap-2">
             <Plus className="w-4 h-4" /> Add Single Student
-          </Button>
+          </GlassButton>
         </div>
       </div>
 
-      <div className="max-w-md">
-        <Input
+      <div className="relative max-w-md">
+        <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+        <input
           placeholder="Search by student name, email, or offline reg number..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
+          className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white/[0.03] border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-blue/50 focus:ring-1 focus:ring-brand-blue/50 transition-all font-mono"
         />
       </div>
 
-      {isLoading ? (
-        <Skeleton className="h-64 w-full" />
-      ) : records.length === 0 ? (
-        <Card className="p-12 text-center text-slate-500 text-xs">
-          No offline eligible student records found matching your query.
-        </Card>
-      ) : (
-        <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-900/60">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-950/80 border-b border-slate-800 text-slate-400 font-mono uppercase tracking-wider">
-              <tr>
-                <th className="p-4">Student Name</th>
-                <th className="p-4">Authoritative Email</th>
-                <th className="p-4">Offline Reg #</th>
-                <th className="p-4">Course / Program</th>
-                <th className="p-4">Portal Status</th>
-                <th className="p-4">Added Date</th>
-                <th className="p-4 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/80 font-mono">
-              {records.map((rec) => (
-                <tr key={rec.id} className="hover:bg-slate-800/30 transition-colors">
-                  <td className="p-4 font-semibold text-white font-sans">{rec.fullName}</td>
-                  <td className="p-4 text-indigo-300">{rec.email}</td>
-                  <td className="p-4 text-slate-400">{rec.offlineRegNumber || '-'}</td>
-                  <td className="p-4 text-slate-300 font-sans">{rec.courseHint || '-'}</td>
-                  <td className="p-4">
+      <GlassPanel glow="blue" className="overflow-hidden p-0">
+        <GlassTable>
+          <GlassTableHeader>
+            <GlassTableRow isHeader>
+              <GlassTableHead>Student Name</GlassTableHead>
+              <GlassTableHead>Authoritative Email</GlassTableHead>
+              <GlassTableHead>Offline Reg #</GlassTableHead>
+              <GlassTableHead>Course / Program</GlassTableHead>
+              <GlassTableHead>Portal Status</GlassTableHead>
+              <GlassTableHead>Added Date</GlassTableHead>
+              <GlassTableHead className="text-right">Actions</GlassTableHead>
+            </GlassTableRow>
+          </GlassTableHeader>
+          <GlassTableBody>
+            {isLoading ? (
+              <GlassTableLoading colSpan={7} rows={4} />
+            ) : records.length === 0 ? (
+              <GlassTableEmpty message="No offline eligible student records found matching your query." colSpan={7} />
+            ) : (
+              records.map((rec) => (
+                <GlassTableRow key={rec.id}>
+                  <GlassTableCell className="font-semibold text-white">{rec.fullName}</GlassTableCell>
+                  <GlassTableCell className="text-brand-cyan font-mono">{rec.email}</GlassTableCell>
+                  <GlassTableCell className="text-slate-400 font-mono">{rec.offlineRegNumber || '-'}</GlassTableCell>
+                  <GlassTableCell className="text-slate-300">{rec.courseHint || '-'}</GlassTableCell>
+                  <GlassTableCell>
                     {rec.isRegistered ? (
-                      <Badge variant="success">Account Created</Badge>
+                      <GlassBadge variant="success">Account Created</GlassBadge>
                     ) : (
-                      <Badge variant="warning">Awaiting Registration</Badge>
+                      <GlassBadge variant="warning">Awaiting Registration</GlassBadge>
                     )}
-                  </td>
-                  <td className="p-4 text-slate-500">{formatDate(rec.createdAt)}</td>
-                  <td className="p-4 text-right">
+                  </GlassTableCell>
+                  <GlassTableCell className="text-slate-400 font-mono">{formatDate(rec.createdAt)}</GlassTableCell>
+                  <GlassTableCell className="text-right">
                     <button
                       onClick={() => deleteMutation.mutate(rec.id)}
-                      className="text-slate-500 hover:text-rose-400 p-1"
+                      className="text-slate-400 hover:text-rose-400 p-1.5 rounded-lg hover:bg-rose-500/10 transition-colors"
                       title="Delete record"
                     >
                       <Trash2 className="w-4 h-4 inline" />
                     </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+                  </GlassTableCell>
+                </GlassTableRow>
+              ))
+            )}
+          </GlassTableBody>
+        </GlassTable>
+      </GlassPanel>
 
       {/* ADD SINGLE MODAL */}
-      <Modal
+      <GlassModal
         isOpen={addModalOpen}
         onClose={() => setAddModalOpen(false)}
         title="Add Offline Eligible Student"
@@ -174,44 +187,71 @@ export const AdminEligibleEmails = () => {
       >
         <form onSubmit={handleSubmit(onAddSingle)} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1">Student Full Name</label>
-            <Input placeholder="e.g. Rahul Sharma" error={errors.fullName?.message} {...register('fullName')} />
+            <label className="block text-xs font-medium text-slate-300 mb-1.5 font-mono">Student Full Name</label>
+            <input
+              placeholder="e.g. Rahul Sharma"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.03] border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-blue/50"
+              {...register('fullName')}
+            />
+            {errors.fullName?.message && (
+              <span className="text-[11px] text-red-400 mt-1 block">{errors.fullName.message}</span>
+            )}
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1">Student Email Address</label>
-            <Input type="email" placeholder="e.g. rahul@example.com" error={errors.email?.message} {...register('email')} />
+            <label className="block text-xs font-medium text-slate-300 mb-1.5 font-mono">Student Email Address</label>
+            <input
+              type="email"
+              placeholder="e.g. rahul@example.com"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.03] border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-blue/50 font-mono"
+              {...register('email')}
+            />
+            {errors.email?.message && (
+              <span className="text-[11px] text-red-400 mt-1 block">{errors.email.message}</span>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">Offline Reg Number</label>
-              <Input placeholder="e.g. OFF-2026-005" {...register('offlineRegNumber')} />
+              <label className="block text-xs font-medium text-slate-300 mb-1.5 font-mono">Offline Reg Number</label>
+              <input
+                placeholder="e.g. OFF-2026-005"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.03] border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-blue/50 font-mono"
+                {...register('offlineRegNumber')}
+              />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">Phone Number</label>
-              <Input placeholder="+91..." {...register('phone')} />
+              <label className="block text-xs font-medium text-slate-300 mb-1.5 font-mono">Phone Number</label>
+              <input
+                placeholder="+91..."
+                className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.03] border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-blue/50 font-mono"
+                {...register('phone')}
+              />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1">Course / Program Enrolled</label>
-            <Input placeholder="e.g. Full-Stack Software Engineering" {...register('courseHint')} />
+            <label className="block text-xs font-medium text-slate-300 mb-1.5 font-mono">Course / Program Enrolled</label>
+            <input
+              placeholder="e.g. Full-Stack Software Engineering"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.03] border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-blue/50"
+              {...register('courseHint')}
+            />
           </div>
 
-          <div className="pt-2 flex justify-end gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => setAddModalOpen(false)}>
+          <div className="pt-3 border-t border-white/10 flex justify-end gap-2">
+            <GlassButton type="button" variant="ghost" size="sm" onClick={() => setAddModalOpen(false)}>
               Cancel
-            </Button>
-            <Button type="submit" size="sm" isLoading={isSubmitting}>
+            </GlassButton>
+            <GlassButton type="submit" variant="primary" size="sm" disabled={isSubmitting}>
               Add to Registry
-            </Button>
+            </GlassButton>
           </div>
         </form>
-      </Modal>
+      </GlassModal>
 
       {/* BULK IMPORT MODAL */}
-      <Modal
+      <GlassModal
         isOpen={bulkModalOpen}
         onClose={() => setBulkModalOpen(false)}
         title="Bulk Import Offline Students"
@@ -221,7 +261,7 @@ export const AdminEligibleEmails = () => {
           <p className="text-xs text-slate-400">
             Expected JSON format:
           </p>
-          <pre className="p-3 bg-slate-950 rounded-lg text-[11px] text-indigo-300 border border-slate-800 overflow-x-auto">
+          <pre className="p-3 bg-slate-950/80 rounded-xl text-[11px] text-brand-cyan border border-white/10 font-mono overflow-x-auto">
 {`[
   {
     "fullName": "Student Name",
@@ -238,19 +278,19 @@ export const AdminEligibleEmails = () => {
             placeholder="Paste JSON array here..."
             value={bulkJson}
             onChange={(e) => setBulkJson(e.target.value)}
-            className="flex w-full rounded-lg border border-slate-800 bg-slate-950 p-3 text-xs text-slate-100 font-mono focus:outline-none focus:border-indigo-500"
+            className="w-full rounded-xl border border-white/10 bg-slate-950/80 p-3 text-xs text-slate-100 font-mono focus:outline-none focus:border-brand-blue/50"
           />
 
-          <div className="pt-2 flex justify-end gap-2">
-            <Button variant="outline" size="sm" onClick={() => setBulkModalOpen(false)}>
+          <div className="pt-3 border-t border-white/10 flex justify-end gap-2">
+            <GlassButton variant="ghost" size="sm" onClick={() => setBulkModalOpen(false)}>
               Cancel
-            </Button>
-            <Button size="sm" onClick={onBulkImport}>
+            </GlassButton>
+            <GlassButton variant="primary" size="sm" onClick={onBulkImport}>
               Run Bulk Import
-            </Button>
+            </GlassButton>
           </div>
         </div>
-      </Modal>
+      </GlassModal>
     </div>
   );
 };
