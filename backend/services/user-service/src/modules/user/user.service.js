@@ -245,8 +245,11 @@ const getStudents = async ({ batchId, journeyStatus, status, search = '', page =
 const getStudentById = async (id) => {
   const student = await prisma.user.findFirst({
     where: {
-      id,
       role: 'STUDENT',
+      OR: [
+        { id },
+        { studentProfile: { id } },
+      ],
     },
     include: {
       studentProfile: {
@@ -260,22 +263,23 @@ const getStudentById = async (id) => {
           feeRecords: {
             include: {
               course: true,
+              batch: true,
               payments: {
-                orderBy: { paymentDate: 'desc' },
+                orderBy: { paidAt: 'desc' },
               },
             },
           },
           mockResults: {
             include: {
               mockInterview: {
-                include: { course: true },
+                include: { course: true, batch: true },
               },
             },
             orderBy: { createdAt: 'desc' },
           },
           examResults: {
             include: {
-              offlineExam: {
+              exam: {
                 include: { course: true, batch: true },
               },
             },
@@ -292,6 +296,14 @@ const getStudentById = async (id) => {
     throw error;
   }
 
+  // Alias exam to offlineExam for backwards compatibility
+  if (student.studentProfile && Array.isArray(student.studentProfile.examResults)) {
+    student.studentProfile.examResults = student.studentProfile.examResults.map((r) => ({
+      ...r,
+      offlineExam: r.exam,
+    }));
+  }
+
   return student;
 };
 
@@ -300,7 +312,13 @@ const getStudentById = async (id) => {
  */
 const updateStudentByAdmin = async (id, data, adminUser, req) => {
   const user = await prisma.user.findFirst({
-    where: { id, role: 'STUDENT' },
+    where: {
+      role: 'STUDENT',
+      OR: [
+        { id },
+        { studentProfile: { id } },
+      ],
+    },
     include: { studentProfile: true },
   });
 
@@ -328,7 +346,7 @@ const updateStudentByAdmin = async (id, data, adminUser, req) => {
   // Write changes to database
   await prisma.$transaction(async (tx) => {
     if (Object.keys(userUpdate).length > 0) {
-      await tx.user.update({ where: { id }, data: userUpdate });
+      await tx.user.update({ where: { id: user.id }, data: userUpdate });
     }
     if (user.studentProfile && Object.keys(profileUpdate).length > 0) {
       await tx.studentProfile.update({
@@ -343,13 +361,13 @@ const updateStudentByAdmin = async (id, data, adminUser, req) => {
     userId: adminUser.id,
     action: 'STUDENT_DETAILS_UPDATED',
     entity: 'StudentProfile',
-    entityId: id,
+    entityId: user.studentProfile?.id || user.id,
     details: { ...userUpdate, ...profileUpdate },
     req,
   });
 
   // Invalidate Redis caches immediately
-  await redisClient.del(`student:profile:${id}`, 'users');
+  await redisClient.del(`student:profile:${user.id}`, `student:profile:${id}`, 'users');
   await invalidateCache(['users', 'batches']);
 
   return { message: 'Student details updated successfully' };
@@ -360,7 +378,13 @@ const updateStudentByAdmin = async (id, data, adminUser, req) => {
  */
 const updateStudentJourneyStatus = async (id, data, adminUser, req) => {
   const user = await prisma.user.findFirst({
-    where: { id, role: 'STUDENT' },
+    where: {
+      role: 'STUDENT',
+      OR: [
+        { id },
+        { studentProfile: { id } },
+      ],
+    },
     include: { studentProfile: true },
   });
 
@@ -398,7 +422,7 @@ const updateStudentJourneyStatus = async (id, data, adminUser, req) => {
   });
 
   // Invalidate Redis cache
-  await redisClient.del(`student:profile:${id}`, 'users');
+  await redisClient.del(`student:profile:${user.id}`, `student:profile:${id}`, 'users');
   await invalidateCache(['users']);
 
   return { message: 'Student journey status updated successfully' };
